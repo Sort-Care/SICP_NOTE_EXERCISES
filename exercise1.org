@@ -753,8 +753,7 @@ Say $k$ is the final iteration where $b^{\langle k-1 \rangle}=0$.
 Then the total times that ~remainder~ gets evaluated is:
 
 $$
-T(remainder) = R_b^{\langle 0 \rangle} + R_b^{\langle 1 \rangle} + R_b^{\langle 2 \rangle} + \cdots + R_b^{\langle k-1 \rangle} +\\
- R_a^{\langle k-1 \rangle}
+T(remainder) = R_b^{\langle 0 \rangle} + R_b^{\langle 1 \rangle} + R_b^{\langle 2 \rangle} + \cdots + R_b^{\langle k-1 \rangle} + R_a^{\langle k-1 \rangle}
 $$
 
 Notice that,
@@ -765,6 +764,5 @@ $$
 Thus the formula can be rewritten into:
 
 $$
-T(remainder) = \sum_{j = 0}^0 Fib(j) + \sum_{j = 0}^1 Fib(j) + \sum_{j = 0}^2 Fib(j) + \cdots +\\
-2\sum_{j = 0}^{k-2} Fib(j) + \sum_{j = 0}^{k-1} Fib(j)
+T(remainder) = \sum_{j = 0}^0 Fib(j) + \sum_{j = 0}^1 Fib(j) + \sum_{j = 0}^2 Fib(j) + \cdots + 2\sum_{j = 0}^{k-2} Fib(j) + \sum_{j = 0}^{k-1} Fib(j)
 $$
