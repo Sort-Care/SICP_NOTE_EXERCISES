@@ -1,0 +1,204 @@
+* Introduction
+Formalize notions about space and time.
+Start a way of talking about mathematical truth formally.
+Declarative knowledge.
+Formalize intuitions about *process*.
+
+Declarative knowledge: what is a square root? (What u are looking for)
+Imperative knowledge: how to find a square root? (How to find it)
+
+How to find $\sqrt{x}$
+1. Make a guess $G$
+2. Improve the guess by averaging $G$ and $X/G$
+3. Keep improving the guess until it is good enough
+
+- Procedure :: the thing that directs a process, a pattern of rules
+
+Large systems: techniques for controlling the complexity of large systems.
+
+CS deals with idealized components. Parts are those abstract entities. The limitations
+are located in our mind. 
+
+* Black box abstraction
+E.g.: Square root method
+- Build a box to find the square root of x.
+Using black box to abstract details.
+
+A fixed point of a function $F$, is a value $y$ such that $F(y) = y$.
+
+The general strategy, to define a box that find the fixed point.
+
+Procedures are the way to talk about imperative knowledge.
+** Primitive Objects
+1. Primitive Procedures
+2. Primitive Data
+** Means of Combination
+1. Procedure Composition
+2. Construction of Compound Data
+** Means of Abstraction
+1. Procedure Definition
+2. Simple Data Abstraction
+** Capturing Common Patterns
+1. High-order Procedures: whose input and output are procedures
+2. Data as Procedures
+
+#+begin_src scheme
+; (* x (+ a1 a2))
+(* 2 (+ 1 3))
+#+end_src
+
+#+RESULTS:
+: 8
+
+That can apply to not only numbers, but also vectors, polynomials, electric signals
+and so forth.
+
+If the language is a good one to express all that ideas, general ideas. 
+But the details for all the different cases are different.
+
+Fit new objects to the already existing procedure.
+
+Question: CONVENTIONAL INTERFACES!
+
+* Conventional Interfaces
+** Generic Operations
+** Large-Scale Structure and Modularity
+** Object Oriented Programming
+** Operations on Aggregates
+* Making New Languages (Metaliguistic Abstraction)
+(YF) = (F (YF))
+* Lisp
+Primitive elements of a language? 
+Means of combination?
+Means of abstraction?
+
+** Primitive Data and Procedures in Lisp
++
+
+3
+
+12.4
+
+Above are some symbols that represents things.
+
+Putting together:
+#+begin_src scheme
+  ;operator
+  ;| -----------operands
+  ;| |      |
+  ;v v      v
+  (+ 3 17.4 5) ;; A combination
+  ;25.4
+#+end_src
+
+Prefix notation. And parens make it unambiguous.
+
+This combination is a tree! Parentheses are a way to write the tree structure
+in a linear form.
+#+begin_src scheme
+  (+ (* 3 5)
+     (* 47
+        (- 20 6.8))
+     12
+     )
+#+end_src
+
+#+RESULTS:
+: 647.4
+
+Abstraction: ~define~
+#+begin_src scheme
+  (define A (* 5 5))
+  (define B (+ A (* 5 A)))
+  (* B A)
+#+end_src
+
+#+RESULTS:
+: 3750
+
+*** Naming General Methods
+#+begin_src scheme
+  (define (square x)
+    (* x x))
+  (square 18.8)
+#+end_src
+
+#+RESULTS:
+: 353.44000000000005
+But it doesn't look like naming something, let's do it differently so that
+it is more explicitly that we are defining something:
+#+begin_src scheme
+  (define square            ;; naming something square
+    (lambda (x) (* x x) ))  ;; lambda is the way of saying make a procedure
+  (square (square (square 1001)))
+#+end_src
+
+#+RESULTS:
+: 1.008028056070056e+24
+
+Syntactic sugar to type in stuff.
+#+begin_src scheme
+  (define (average x y)
+    (/ (+ x y) 2))
+  (define (mean-square x y)
+    (average (square x)
+             (square y)))
+  (mean-square 2 3)
+#+end_src
+
+You shouldn't not be able to tell what was built in the language and what was
+compound. Because the compound has abstractions wrapped around them.
+
+*** Case Analysis
+~abs~, the absolute function, needs case analysis.
+#+begin_src scheme
+  (define (abs x)
+    ;     /------------------ clause
+    ;     |/----------------- predicate
+    ;     ||     | /--------- action
+    ;     ||     | |   |
+    (cond ((< x 0) (- x))
+          ((= x 0) 0)
+          ((> x 0) x)
+          ))
+#+end_src
+
+Now, let's try write the square root procedure.
+
+
+#+begin_src scheme
+(define (sqrt x)
+  (define (square a)
+    (* a a))
+  (define (average n m)
+    (/ (+ n m) 2.0))
+  (define (improve guess)
+    (average guess (/ x guess)))
+  (define (good-enough? guess)
+    (< (abs (- (square guess) x))
+       .001))
+  (define (try guess)
+    (if (good-enough? guess)
+        guess
+        (try (improve guess))))
+  (try 1.0))
+
+(sqrt 2.0)
+
+#+end_src
+
+#+RESULTS:
+: 1.4142156862745097
+
+** Summarize 
+operators and operands, condition branches, define!!!
+
+Future:
+1. Combine primitive data to get compound data
+2. Abstract data so that we can use large globs of data.
+Next Lecture:
+1. How it is that you make a link the procedures we write and the processes
+that happen in the machine.
+2. How it is that you start using the power of Lisp to talk more than little
+computations, but about general conventional methods of doing things.
+

@@ -1,0 +1,214 @@
+* Compound Data
+We build layered system.
+
+**We divorce the task of building things from the task of implementing the parts.**
+
+Not we are moving to putting primitive data together to make compound data, and ways
+of abstractions. 
+
+Isolate the details from the lower layers.
+** A system that does Arithmetic on Rational Numbers
+We don't have a way of saying rational numbers.
+*** Let's Assume
+Wishful thinking comes into play again. Let's imagine we have three procedures:
+#+begin_src scheme
+  (make-rat n d) ;; --> _  (CONSTRUCTOR)
+  (numer _) ;; --> N       (SELECTOR1)
+  (denom _) ;; --> D       (SELECTOR2)
+#+end_src
+Then with that, we can write procedures dealing with arithmetic operations on them:
+#+begin_src scheme
+  (define (+rat x y)
+    (make-rat
+     (+ (* (numer x) (denom y))
+        (* (denom x) (numer y)))
+     (* (denom x) (denom y))))
+
+  (define (*rat x y)
+    (make-rat
+     (* (numer x) (numer y))
+     (* (denom x) (denom y))))
+
+  ;; but we haven't know what are those procedures we wished
+#+end_src
+
+We assumed we have CONSTRUCTOR of the rational number, and two SELECTORs for them.
+
+Why we did this? We want to carry the numerator and the denominators around
+together all the time.
+
+*** List Structure
+Now let's look at the wishful part.
+
+Pairs:
+~cons~: construct a pair
+~car~ : selects the first part of the pair
+~cdr~ : selects the second part of the pair
+#+begin_src scheme
+(define x (cons 1 2))
+(car x) ;; 1
+(cdr x) ;; 2
+#+end_src
+
+~cons~ can be used to form pairs whose elements are pairs, and so on.
+
+Then we can define those wishful procedures:
+#+begin_src scheme
+  (define (make-rat n d)
+    (cons n d))
+
+  (define (numer x) (car x))
+  (define (denom x) (cdr x))
+  ;; let's try it
+  (define a (make-rat 1 2))
+  (define b (make-rat 1 4))
+  (define ans (+rat a b))
+  (numer ans)
+  ;; result yield: 6
+  (denom ans)
+  ;; result yield: 8
+#+end_src
+What's wrong?
+
+From one way, it is completely right.
+Or we can say it is George's problem.
+
+Way to fix:
+#+begin_src scheme
+  (define (make-rat n d)
+    (let ((g (gcd n d)));; greatest common divider
+      (cons (/ n g)
+            (/ d g))))
+#+end_src
+
+We set up an abstraction barrier between the arithmetic and the underlying
+implementation using pair.
+That abstraction is ~make-rat~, ~numer~, ~denom~.
+
+Separating the *use* of data objects from the *representation* of data objects.
+This is called **DATA ABSTRACTION**.
+
+But Why?
+It goes back to this notion of naming.
+One of the most important principles in programming is the same as one of the
+most important principles in sorcery, NAMING.
+If you have the name of the spirit, you have the control of it.
+
+So the reason for data abstraction is to have a **conceptual entity**.
+
+Advantages to do so:
+1. we might wanna have alternative implementations
+
+Never make up your mind about anything until you're forced to do it.
+
+The problem is, there is a very, very narrow line between deferring decisions
+and outright procrastination.
+So you'd like to make progress but also at the same time, never be bound by
+the consequences of the decisions.
+
+Data abstraction is one way of doing this. We give a name to the decision.
+But the details of those decision are not implemented until necessary.
+
+#+begin_quote
+And in general, I think people who really believe that you design everything
+before you implement it, basically are people who haven't designed very many
+things.
+#+end_quote
+
+The real power is that we can pretend we've made decisions, and later on
+figure out which one is right, which decision you ought to have made.
+
+** Data Abstraction
+Points on a plane.
+#+begin_src scheme
+  ;; representing vectors in the plane
+  (define (make-vector x y) (cons x y)) ;; constructor
+  (define (xcor p) (car p)) ;; selector: x coordinate
+  (define (ycor p) (cdr p)) ;; selector: y coordinate
+#+end_src
+We might want to represent a segment.
+#+begin_src scheme
+  ;; representing line segments
+  (define (make-seg p q) (cons p q))
+  (define (seg-start s) (car s))
+  (define (seg-end s) (cdr s))
+#+end_src
+With that we can do more, for example, the middle point.
+#+begin_src scheme
+  ;; compute the midpoint of a line segment
+  (define (midpoint s)
+    (let ((a (seg-start s))
+          (b (seg-end s)))
+      (make-vector
+       (average (xcor a) (xcor b))
+       (average (ycor a) (ycor b)))))
+  ;; get the length of a segment
+  (define (length s)
+    (let ((dx (- (xcor (seg-end s))
+                 (xcor (seg-start s))))
+          (dy (- (ycor (seg-end s))
+                 (ycor (seg-start s)))))
+      (sqrt (+ (square dx)
+               (square dy)))))
+#+end_src
+What we built is a layered system:
+
+Segments
+----- abstraction barrier ------ (make-seg, seg-start, set-end)
+vectors
+----- abstraction barrier ------ (make-vector, xcor, ycor)
+pairs and numbers
+
+- Closure :: the means of combination in your system are such that, when you 
+put things together, you can then put those together with the same means of combination.
+
+One of the things you should test of quality for a means of combination, is
+are the things you make closed under that means of combination?
+
+** What does Data Abstractions Means?
+We assumed there are procedures. (~make-rat~, ~numer~, ~denom~).
+We actually defined a rational number representation in terms of **ABSTRACT DATA**.
+
+What we built is a rational arithmetic system that would sit on top of any representation.
+What do we mean by any representation?
+
+IF $x$ = ~(make-rat n d)~,
+THEN, ~(numer x)~ / ~(denom x)~ = n/d
+
+That is George's contract. Other then that, we don't care how he does it.
+
+The rational number system is the above axiom.
+
+RATIONAL NUMBERS
+---- abstraction barrier ---- (~make-rat~, ~numer~, ~denom~)
+PAIRS
+
+*** What are pairs really?
+Pair Axiom:
+For any $x$ and $y$:
+#+begin_src scheme
+  (car (cons x y)) ;; is always x
+  (cdr (cons x y)) ;; is always y
+#+end_src
+
+PAIRS
+----- abstraction barrier ---- (~cons~, ~car~, ~cdr~)
+what's here?
+
+One possible representation:
+#+begin_src scheme
+  (define (cons a b) ;; cons is a procedure that returns a procedure
+    (lambda (pick)
+      (cond ((= pick 1) a)
+            ((= pick 2) b))))
+
+  (define (car x) (x 1))
+  (define (cdr y) (x 2))
+#+end_src
+
+**Notice there is no /pure/ data in it, it's just procedures.**
+
+Blur the line between what's data and what's procedure.
+We thought the underlying thing for pairs is data. But it can totally work
+if it is just pure procedures.
+

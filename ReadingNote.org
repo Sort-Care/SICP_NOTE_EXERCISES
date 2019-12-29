@@ -1,0 +1,671 @@
+#+LATEX_HEADER: \newcommand{\Lame}{Lam\'{e}}
+* Building Abstractions with Procedures
+Acts of mind:
+1. Combining simple ones into a compound one
+2. Compare and see the relationship
+3. Abstraction
+
+Real-world programming, requires care, expertise, and wisdom.
+
+Master software engineers have the ability to organize programs so that they can
+be reasonably sure that the resulting processes will perform the tasks intended. 
+They can visualize the behavior of their systems in advance.
+
+Well-designed computational systems, are designed in a modular manner, so that
+the parts can be constructed, replaced and debugged separately.
+
+** Programming in Lisp
+Lisp = LISt Processing, was designed to provide symbol-manipulating capabilities
+for attacking programming problems such as symbolic differentiation and integration
+of algebraic expression.
+
+The most significant of these features is the fact that Lisp descriptions of process,
+called procedures, can themselves be represented and manipulated as Lisp data.
+
+The importance of this is that there are powerful program-design techniques
+that rely on the ability to blur the traditional distinction between "passive"
+data and "active" processes.
+
+The ability to represent procedures as data also makes Lisp an excellent language for 
+writing programs that must manipulate other programs as data, such as in interpreters and
+compilers that support computer languages.
+
+** The elements of programming
+The language serves as a framework within which we organize our ideas about processes.
+Every powerful language has 3 mechanisms for accomplishing this:
+1. primitive expressions
+2. means of combination
+3. means of abstraction
+
+Procedures and data.
+
+Prefix notation advantage:
+1. accommodate procedures that may take an arbitrary number of arguments
+2. extends in a straight-forward way to allow combinations to be nested, to 
+   have combinations whose elements are themselves combinations
+
+~read-eval-print~ loop.
+
+*** 1.1.3 Evaluating Combinations
+To evaluate a combination, do the following:
+1. Evaluate the subexpressions of the combination
+2. Apply the procedure that is the value of the leftmost subexpression (the operator)
+   to the arguments that are the values of the other subexpressions (the operands)
+
+Repeated application of the first step bring us to the point where we need to evaluate
+primitive expressions such as, numerals, built-in operators, or other names.
+We take care of the primitive cases by stipulating that:
+- the values of numerals are the numbers that they name.
+- the values of built-in operators are the machine instruction sequences
+  that carry out the corresponding operations
+- the values of other names are the objects associated with those names in 
+  the environment.
+
+The general notion of the environment as providing a context in which evaluation takes
+place will play an important role in our understanding of program execution.
+
+Special forms: where the evaluation rule doesn't apply. For example, ~define~.
+Each special form have their own evaluation rules.
+
+In comparison with most other programming languages, Lisp has a very simple syntax;
+that is, the evaluation rule for expressions can be described by a simple general rule
+together with specialized rules for a small number of special forms.
+
+*** 1.1.4 Compound Procedures
++ Numbers and arithmetic operations are primitive data and procedures.
++ Nesting of combinations provides a means of combining operations
++ Definitions that associate names with values provide a limited means of abstraction.
+
+It is possible, indeed important, to be able to separate procedure and the name.
+We can create procedures without naming then, and we can also give names to procedures 
+that have already been created.
+*** 1.1.5 The Substitution Model for Procedure Application
+To apply a compound procedure to arguments, evaluate the body of the procedure with each
+formal parameter replaced by the corresponding argument.
+
+Substitution model for procedure application. It can be taken as a model that determines the 
+"meaning" of procedure application, insofar as the procedures in this chapter are concerned.
+However, there are two points that should be stressed:
+- The purpose of the substitution is to help us think about procedure application, not to 
+  provide a description of how the interpreter really works. In practice, the "substitution"
+  is accomplished by using a local environment for the formal parameters.
+- The substitution model is only a way to get started thinking formally about the evaluation
+  process. When we get to the use of procedures with "mutable data", we will see that the 
+  substitution model breaks down and must be replaced by a more complicated model of procedure
+  application.
+  In general, when modeling phenomena in science and engineering, we begin with simplified,
+  incomplete models. As we examine things in greater detail, these simple models become
+  inadequate and must be replaced by more refined models.
+
+**** Applicative order versus normal order
+According to the description of evaluation given in 1.1.3, the interpreter first evaluates
+the operator and operands and then applies the resulting procedure to the resulting arguments.
+This is not the only way to perform evaluation. 
+
+An alternative evaluation model would not evaluate the operands until their values were needed. 
+Instead it would first substitute operand expressions for parameters until it obtained an 
+expression involving only primitive operators, and would then perform the evaluation. 
+
+"Fully expand and then reduce" evaluation method is known as **normal-order** evaluation,
+in contrast to the "evaluate the arguments and then apply" method that the interpreter actually
+uses, which is called **applicative-order** evaluation.
+
+Lisp uses applicative-order evaluation, partly because of the addtional **efficiency** obtained from
+avoiding multiple evaluations of expressions. 
+Normal-order evaluation becomes much more complicated to deal with when we leave the realm of
+procedures that can be modeled by substitution.
+On the other hand, normal-order evaluation can be an extremely valuable
+tool, and we will investigate some of its implications in latter chapters.
+
+
+** Conditional Expressions and Predicate
+But by far, we lack ways of doing case analysis. So we will introduce them in the follow section.
+
+The general form of a conditional expression is
+#+begin_src scheme
+  (cond (p1 e1)
+        (p2 e2)
+        (p3 e3))
+#+end_src
+the symbol ~cond~ is followed by parenthesized pairs of expressions called clauses.
+The first pair is predicate, whose value is interpreted as either true or false.
+
+Conditional expressions are evaluated as follows. The predicate is evaluated first.
+If the value is false, then next predicate is evaluated. This keeps going until one
+predicate's value is found to be true, in which case the interpreter returns the value 
+of the corresponding consequent expression of the clause as the value of the corresponding
+consequent expression of the clause as the value of the conditional expression.
+If none of the predicates is found to be true, the value of the cond is undefined.
+
+The word predicate is used for procedures that return true or false, as well as for expressions 
+that evaluate to true or false. The absolute-value procedure ~abs~ makes use of the primitive 
+predicates <, > and =.
+
+Here is one way to write the absolute-value procedure:
+#+begin_src scheme
+  (define (abs x)
+    (cond ((< x 0) (- x))
+          (else x)))
+#+end_src
+~else~ is a special symbol that can be in place of the ~<p>~ in the final clause of a ~cond~.
+
+And the following is another way to write the absolute-value procedure:
+#+begin_src scheme
+  (define (abs x)
+    (if (< x 0)
+        (- x)
+        x))
+#+end_src
+
+This uses the special form ~if~, a restricted type of conditional that can be used when there
+are precisely two cases in the case analysis. The general form of an ~if~ expression is:
+#+begin_src scheme
+  (if <predicate> <consequent> <alternative>)
+#+end_src
+
+To evaluate an ~if~ expression, the interpreter starts by evaluating the ~<predicate>~ part of
+expression. If the ~<predicate>~ evaluates to a true value, the interpreter then evaluates the
+~<consequent>~ and returns its value. Otherwise it evaluates the ~<alternative>~ and returns 
+its value.
+
+In addition to primitive predicates such as <, = and >, there are logical composition operations,
+which enable us to construct compound predicates. The three frequently used are these:
+#+begin_src scheme
+  (and <e1> ... <en>)
+  (or  <e1> ... <en>)
+  (not <e>)
+#+end_src
+
+For ~and~, the interpreter evaluates the expressions one at a time, from left to right, if any
+is false, the value of the ~and~ expression is false, and the rest of the ~<e>~ are not evaluated.
+
+Notice that ~and~ and ~or~ are special forms, not procedures, because the subexpressions are not 
+necessarily all evaluated. ~Not~ is an ordinary procedure.
+
+We can define a predicate to test whether one number is greater than or equal to another as:
+#+begin_src scheme
+  (define (>= x y)
+    (or (> x y)
+        (= x y)))
+#+end_src
+Or, alternatively, as
+#+begin_src scheme
+  (define (>= x y)
+    (not (< x y)))
+#+end_src
+** Example: Square Roots by Newton's Method
+There is an important difference between mathematical functions and computer procedures.
+**Procedures must be effective**.
+
+The contrast between function and procedure is a reflection of the general distinction between describing 
+properties of things and describing how to do things.
+
+The definition of a square root is:
+
+$\sqrt{x}$ = the $y$ such that $y \geq 0$ and $y^2 = x$
+
+The definition does not describe a procedure. Indeed, it tells us almost nothing about how to find the square
+root of a given number. It will not help matters to rephrase this definition in pseudo-Lisp:
+#+begin_src scheme
+  (define (sqrt x)
+    (the y (and (>= y 0)
+                (= (square y) x))))
+#+end_src
+
+The mathematical knowledge is used usually to define the problem of "what is".
+But the real thing we are most concerned in computer science is "how to", the imperative knowledge.
+
+The declarative and imperative knowledge are intimately related, as indeed are mathematics and computer
+science.There is a large number of research aimed at establishing techniques for proving the correctness
+of a program, and much of the difficulty of this subject has to do with negotiating the transition
+between imperative statements (from which programs are constructed) and declarative statements (which
+can be used to deduce things).
+
+In a related vein, an important current area in programming-language design is the exploration of so-called
+very high-level languages, in which one actually programs in terms of declarative statements. The idea is to
+make interpreters sophisticated enough, so that, given "what is" knowledge specified by the programmer, they
+can generate "how to" knowledge automatically. This cannot be done in general, but there are important areas
+where progress has been made.
+
+#+begin_src scheme
+  (define (sqrt x)
+    (define (good-enough? guess x)
+      (< (abs (- (square guess) x)) tolerance))
+    (define (improve guess x)
+      (average guess (/ x guess)))
+    (define (sqrt-iter guess x)
+      (if (good-enough? guess x)
+          guess
+          (sqrt-iter (improve guess x) x)))
+    (sqrt-iter 1.0 x))
+#+end_src
+** Procedures as Black-Box Abstractions
+Each procedure accomplishes an identifiable task that can be used as a module in defining other procedures.
+
+**Procedure Abstraction**: A procedure definition should be able to suppress detail. A user should not need
+to know how the procedure is implemented in order to use it.
+*** Local Names
+*Principle*: The meaning of a procedure should be independent of the parameter names used by its author.
+
+A formal parameter of a procedure has a very special role in the procedure definition, in that it doesn't matter
+what name the formal parameter has. Such a name is called a **bound variable**, and we say that the procedure definition
+binds its formal parameters.
+
+If a variable is not bound, we say that it is **free**.
+
+The set of expressions for which a binding defines a name is called the /scope/ of that name.
+
+*** Internal Definitions and Block Structure
+As shown in the code above, all of the sub-procedures are all included in the definition of ~sqrt~. This is 
+basically the right solution to the simplest name-packaging problem. But we can do more.
+
+Since ~x~ is bound in the definition of sqrt, the procedures ~good-enough?~, ~improve~, and ~sqrt-iter~, which
+are defined internally to ~sqrt~, are in the scope of ~x~. Thus, it is not necessary to pass ~x~ explicitly 
+to each of these procedures. Instead, we allow ~x~ to be a free variable in the internal definitions.
+#+begin_src scheme
+  (define (sqrt x)
+    (define tolerance 0.0001)
+    (define (good-enough? guess)
+      (< (abs (- (square guess) x)) tolerance))
+    (define (improve guess)
+      (average guess (/ x guess)))
+    (define (sqrt-iter guess)
+      (if (good-enough? guess)
+          guess
+          (sqrt-iter (improve guess) x)))
+    (sqrt-iter 1.0))
+#+end_src
+Then ~x~ gets its value from the argument with which the enclosing procedure ~sqrt~ is called.
+This discipline is called **lexical scoping**.
+
+We will use block structure extensively to help us break up large programs into tractable pieces.
+** Procedures and Processes They Generate
+The ability to visualize the consequences of the actions under consideration is crucial to becoming an expert programmer,
+just as it is in any synthetic, creative activity.
+
+A procedure is a pattern for the local evolution of a computational process. It specifies how each stage of the process 
+is built upon the previous stage.
+
+We would like to be able to make statements about the overall, or global, behavior of a process whose local evolution has 
+been specified by a procedure.
+
+In this section we will examine some common "shapes" for processes generated by simple procedures. We will also investigate
+the rates at which these processes consume the important computational resources of time and space.
+*** Linear Recursion and Iteration
+Factorial function:
+$$
+n! = n\cdot (n-1) \cdot (n-2) \cdots 3 \cdot 2 \cdot 1
+$$
+
+Linear recursion approach:
+#+begin_src scheme
+  (define (factorial n)
+    (if (= n 1)
+        1
+        (* n (factorial (- n 1)))))
+#+end_src
+
+A different way of computing it is, we maintain a running product, together with a counter that counts from 1 up to $n$.
+#+begin_src scheme
+  (define (factorial n)
+    (define (iter product counter)
+      (if (> counter n)
+          product
+          (iter (* counter product)
+                (+ counter 1))))
+    (iter 1 1))
+#+end_src
+
+When we consider the "shapes" of the two processes, we find that they evolve quite differently.
+
+The first process builds up a chain of /deferred operations/. The contraction occurs as the operations are actually 
+performed. This type of process, characterized by a chain of deferred operations, is called a /recursive process/.
+
+Carrying out this process requires that the interpreter keep track of the operations to be performed later on.
+
+In the computation of factorial, the length of the chain of deferred multiplications, and hence the amount of information
+needed to keep track of it, grows linearly with $n$, just like the number of steps. Such a process is called a 
+**linear recursive process**.
+
+By contrast, the second process does not grow and shrink. At each step, all we need to keep track of, for any $n$,
+are the current values of the variables ~product~, ~counter~, and ~max-count~. We call this **iterative process**.
+
+In general, an iterative process is one whose state can be summarized by a fixed number of **state variables**,
+together with a fixed rule that describes how the state variables should be updated as the process moves from 
+state to state and an (optional) end test that specifies conditions under which the process should terminate.
+
+In computing $n!$, the number of steps required grows linearly with $n$. Such a process is called a **linear iterative process**.
+
+| Differences |                                                                                   |
+| Iterative   | variables provide a complete description of the state of the process at any point |
+| Recursive   | there is some additional information maintained by the interpreter                |
+
+The hidden information are not contained in the program variables, which indicates "where the process is" in negotiating
+the chain of deferred operations. The longer the chain, the more information must be maintained.
+
+In contrasting iteration and recursion, we must be careful not to confuse the notion of a 
+/recursive process/ with the notion of a /recursive procedure/.
+When we describe a procedure as recursive, we are referring to the syntactic fact that the procedure definition refers
+(either directly or indirectly) to the procedure itself. But when we describe a process as following a pattern that is,
+say, linearly recursive, we are speaking about how the process evolves, not about the syntax of how a procedure is written.
+
+It may seen disturbing that we refer to a recursive procedure such as ~iter~ in the factorial as generating an iterative process.
+However, the process really is iterative: Its state is captured completely by its three state variables, and an interpreter
+need keep track of only three variables in order to execute the process.
+
+One reason that the distinction between process and procedure may be confusing is that most implementations of common languages
+(including Ada, Pascal, and C) are designed in such a way that the interpretation of any recursive procedure consumes an amount
+of memory that grows with the number of procedure calls, even when the process described is, in principle, iterative.
+
+As a consequence, these languages can describe iterative processes only by resorting to special purpose "looping-constructs"
+such as ~do~, ~repeat~, ~until~, ~for~, and ~while~. But the Scheme we shall consider does not share this defect.
+It will execute an iterative process in constant space, even if the iterative process is described by a recursive procedure.
+An implementation with this property is called **tail-recursive**.
+
+When we discuss the implementation of procedures on register machines in chapter 5, we will see that any iterative process 
+can be realized "in hardware" as machine that has a fixed set of registers and no auxiliary memory. 
+In contrast, realizing a recursive process requires a machine that uses an auxiliary data structure known as stack.
+
+With tail recursive implementation, iteration can be expressed using the ordinary procedure call mechanism, so that
+special iteration constructs are useful only as syntactic sugar.
+** Tree Recursion
+Fibonacci numbers:
+$$
+Fib(n) = \begin{cases}
+0 & \text{if } n=0 \\
+1 & \text{if } n=1 \\
+Fib(n-1) + Fib(n-2) & \text{otherwise}
+\end{cases}
+$$
+
+#+begin_src scheme
+  (define (fib n)
+    (cond ((= n 0) 0)
+          ((= n 1) 1)
+          (else (+ (fib (- n 1))
+                   (fib (- n 2))))))
+#+end_src
+
+This procedure is instructive as a prototypical tree recursion, but it is a terrible way to compute
+Fibonacci numbers because it does so much redundant computation.
+In fact, it is not hard to show that the number of times the procedure will compute ~(fib 1)~ or ~(fib 0)~
+(the number of leaves) is precisely $Fib(n+1)$.
+
+To show how bad this is, one can show that the value of $Fib(n)$ grows exponentially with $n$. More
+precisely, $Fib(n)$ is the closet integer to $\phi^n/ \sqrt{5}$ where
+
+$$
+\phi = (1 + \sqrt{5}) / 2 \approx 1.6180
+$$
+
+is the golden ratio, which satisfies the equation
+
+$$
+\phi^2 = \phi + 1
+$$
+
+Thus, the process uses a number of steps that grows exponentially with the input.
+On the other hand, the space required grows only linearly with the input, because we need keep track only 
+of which nodes are above us in the tree at any point in the computation.
+
+**In general, the number of steps required by a tree-recursive process will be proportional to the 
+number of nodes in the tree, while the space required will be proportional to the maximum depth of
+the tree.**
+
+We can also formulate an iterative process for computing the Fibonacci numbers.
+#+begin_src scheme
+  (define (fib n)
+    (fib-iter 1 0 n))
+
+  (define (fib-iter a b count)
+    (if (= count 0)
+        b
+        (fib-iter (+ a b) a (- count 1))))
+#+end_src
+It is not hard to show that, after applying this transformation $n$ times, $a$ and $b$ will hold the
+values of $Fib(n+1)$ and $Fib(n)$, respectively.
+
+This method of computing is linear iterative. The difference between the tree-recursive process and
+the linear iterative process is enormous, even for small inputs.
+
+But tree-recursion should not be considered useless. When we consider processes that operate on 
+hierarchically structured data rather numbers, we will find that tree recursion is a natural and 
+powerful tool.
+
+But even in numerical operations, tree-recursive processes can be helpful in helping us to understand
+and design programs.
+*** Example: Counting Change
+How many different way can we make change of $1.00, given half-dollars, quarters, dimes, nickles, 
+and pennies?
+More generally, can we write a procedure to compute the number of ways to change any given amount
+of money?
+
+The problem has a simple solution as a recursive procedure.
+Suppose we think of types of coins available as arranged in some order. Then the following relation holds:
+The number of ways to change amount $a$ using $n$ kinds of coins equals
++ the number of ways to change amount $a$ using all but the first kind of coin, plus
++ the number of ways to change amount $a-d$ using all $n$ kinds of coins, where $d$ is the denomination of
+  the first kind of coin. (force to use at least one of the first kind of coins in the solution)
+
+To see why this is true, observe that the ways to make change can be divided into two groups:
+those that do not use any of the first kind of coins, and those that do.
+
+Thus we can recursively reduce the problem of changing a given amount to the problem of changing smaller
+amounts using fewer kinds of coins. Consider this reduction rule carefully, and convince yourself that we
+can use it to describe an algorithm if we specify the following degenerate cases:
+1. If $a$ is exactly 0, we should count that as 1 way to make change
+2. If $a$ is less than 0, we should count that as 0 ways to make change.
+3. If $n$ is 0, we should count that as 0 ways to make change.
+We can easily translate this into a recursive procedure
+#+begin_src scheme
+    (define (count-change amount)
+      (cc amount 5))
+
+    ;; assume that coins are sorted in some order
+    ;; pennies      1
+    ;; nickles      5
+    ;; dimes        10
+    ;; quarters     25
+    ;; half-dollars 50
+    (define (cc amount kinds-of-coins)
+      (cond ((= amount 0) 1)
+            ((< amount 0) 0)
+            ((= kinds-of-coins 0) 0)
+            (else (+ (cc amount ;; adding two groups of changing:
+                         (- kinds-of-coins 1)) ;; 1. doesn't use the first kind
+                     (cc (- amount
+                            (first-denomination kinds-of-coins))
+                         kinds-of-coins)))))   ;; 2. use at least one of it.
+
+    (define (first-denomination kinds-of-coins)
+      (cond ((= kinds-of-coins 1) 1)
+            ((= kinds-of-coins 2) 5)
+            ((= kinds-of-coins 3) 10)
+            ((= kinds-of-coins 4) 25)
+            ((= kinds-of-coins 5) 50)))
+
+  (count-change 100)
+#+end_src
+
+#+RESULTS:
+: 292
+
+Here we are thinking of the coins as arranged in order from largest to smallest, but any order will do
+as well.
+
+This procedure generates a tree-recursive process with redundancies similar to the recursive version of ~fib~.
+And it is not so obvious how to design a better algorithm for computing the result, and we leave that as a challenge.
+
+**** Challenge: More Efficient Counting Change Procedure
+***** Method 1: DP (tabulation or memorization)
+**Top-Down DP**:
+Prerequisites of top-down DP to be applicable:
+1. This problem has optimal sub-structures: the solution of the sub-problem is part of the original
+   problem.
+2. This problem has overlapping sub-problems.
+   This is the key characteristic of DP! The search space of this problem is not as big as the 
+   rough bound obtained in the naive solution.
+
+**Bottom-up DP**: 
+the true form of DP, DP was originally known as tabular method.
+The basic steps to build bottom-up DP solution are as follows:
+1. Determine the required set of parameters that uniquely describe the problem (the state)
+2. If there are $N$ parameters required to represent the states, prepare an $N$ dimensional DP table,
+   with one entry per state. Then we need to initialize some cells of the DP table with known initial 
+   values (the base cases).
+3. With the base-case cells/states in the DP table already filled, determine the cells/states
+   that can be filled next (the transitions). Repeat this process until the DP table is complete.
+   For the bottom-up DP, this part is usually accomplished through iterations, using loops (more details
+   about this later)
+
+For this challenge, to accomplish the DP method, either top-down or bottom-up, we need to know the way
+of storing a table in scheme.
+#+begin_src scheme
+  ;; quicker approach for counting change
+  ;; overlapping sub-problems: there is multiple way to reduce the amount
+  ;; to a certain value. And the DP solution is based on that observation.
+  ;; TODO
+  (define (count-change amount)
+    )
+#+end_src
+***** Method 2: Iterative
+What should be the iterative approach? Well, strictly speaking, the bottom-up DP is iterative.
+However, what I am looking for is something that is pure iterative and doesn't need to memorize
+a table for solving the problem. Is that even possible?
+*** Orders of Growth
+Let $n$ be the parameter that measures the size of the problem, and let $R(n)$ be the amount of resources
+the process requires for a problem of size $n$.
+
+The meaning behind of the parameter $n$ can varies. For instance, if our goal is to compute an approximation
+to the square root of a number, we might take $n$ to be the number of digits accuracy required.
+For matrix multiplication we might take $n$ to be the number of rows in the matrices.
+
+In general there are a number of properties of the problem with respect to which it will be desirable to 
+analyze a given process.
+Similarly, $R(n)$ might measure the number of internal storage registers used, the number of elementary machine 
+operations performed, and so on. In computers that do only a fixed number of operations at a time, the time
+required will be proportional to the number of elementary machine operations performed.
+
+We say that $R(n)$ has order of growth $\Theta(f(n))$, written $R(n) = \Theta(f(n))$, if there are positive constants $k_1$ and
+$k_2$ independent of $n$ such that:
+
+$$
+k_1 f(n) \leq R(n) \leq k_2 f(n)
+$$
+
+for any sufficiently large value of $n$. (In other words, for large $n$, the value $R(n)$ is sandwiched between
+$k_1f(n)$ and $k_2f(n)$.)
+
+Order of growth provide only a crude description of the behavior of a process. On the other hand, order
+of growth provides a useful indication of how we may expect the behavior of the process to change as we change the
+size of the problem.
+*** Exponentiation
+Considering computing exponential of a given number:
+$$
+b^n
+$$
+One way to do this is via recursive definition:
+\begin{align*}
+b^n &= b\cdotb^{n-1}\\
+b^0 &= 1
+\end{align*}
+which translates readily into procedure:
+#+begin_src scheme
+  (define (expt b n)
+    (if (= n 0)
+        1
+        (* b (expt b (- n 1)))))
+#+end_src
+This is linear recursion where both space and number of steps taken are $\Theta(n)$.
+
+Just as factorial, we can readily formulate an linear iteration version:
+#+begin_src scheme
+  (define (expt b n)
+    (expt-iter b n 1))
+
+  (define (expt-iter b count product)
+    (if (= count 0)
+        product
+        (expt-iter b
+                   (- count 1)
+                   (* b product))))
+#+end_src
+This version requires $\Theta(n)$ steps and $\Theta(1)$ space.
+
+We can compute exponentials in fewer steps by using successive squaring.
+\begin{align*}
+b^2 &= b\cdot b \\
+b^4 &= b^2 \cdot b^2 \\
+b^8 &= b^4 \cdot b^4
+\end{align*}
+
+This method works fine for exponents that are powers of 2. We can also take advantage of 
+successive squaring in computing exponentials in general if we use the rule.
+\begin{align*}
+b^n &= (b^{n/2})^2 &\text{if}\ n\ \text{is even}\\
+b^n &= b\cdot b^{n-1} &\text{if}\ n\ \text{is odd}
+\end{align*}
+
+We can express this method as a procedure:
+#+begin_src scheme
+  (define (fast-expt b n)
+    (cond ((= n 0) 1)
+          ((even? n) (square (fast-expt b (/ n 2))))
+          (else (* b
+                   (fast-expt b (- n 1))))))
+
+  (define (even? n)
+    (= (remainder n 2) 0))
+
+  (define (square x) (* x x))
+#+end_src
+
+The process evolved by ~fast-expt~ grows logarithmically with $n$ in both space and number of steps.
+The process has $\Theta(n)$ growth.
+*** Greatest Common Divisors
+The greatest common divisor (GCD) of two integers $a$ and $b$ is defined to be the
+largest integer that divides both $a$ and $b$ with no remainder. We will need a way
+to compute GCD when we investigate how to implement rational number arithmetic in 
+next chapter. (To reduce a rational number to lowest terms).
+
+The idea of the Euclid's Algorithm is based on the observation that, if $r$ is the
+remainder when $a$ is divided by $b$, then the common divisors of $a$ and $b$ are
+precisely the same as the common divisors of $b$ and $r$. Thus, we can use the equation:
+
+$$
+GCD(a, b) = GCD(b, r)
+$$
+
+to successively reduce the problem of computing a GCD to the problem of computing the
+GCD of smaller and smaller pairs of integers.
+
+It is possible to show that starting with any two positive integers and performing 
+repeated reductions will always eventually produce a pair where the second number is 0.
+Then the GCD is the other number in the pair.
+
+#+begin_src scheme
+  (define (gcd a b)
+    (if (= b 0)
+        a
+        (gcd b (remainder a b))))
+(gcd 206 40)
+#+end_src
+
+#+RESULTS:
+: 2
+
+This generates an iterative process, whose number of steps grows as the logarithm
+of the numbers involved.
+
+The fact that the number of steps required by Euclid's Algorithm has logarithm growth
+bears an interesting relation to the Fibonacci numbers:
+
+- **\Lame Theorem** :: If Euclid's Algorithm requires $k$ steps to compute the GCD of
+  some pair, then the smaller number in the pair must be greater than or equal to the $k$th
+  Fibonacci number.
+
+We can use this theorem to get an order-of growth estimate fro Euclid's Algorithm.
+Let $n$ be the smaller of the two inputs to the procedure. If the process takes $k$
+steps, then we must have $n \geq Fib(k) \approx \phi^k / \sqrt{5}$.
+Notice that the relationship between $n$ and $k$, as $n$ grows, $k$ grow as the logarithm
+(to the base $\phi$) of $n$, or less. Hence, the order of growth is $\Theta(\log{n})$.

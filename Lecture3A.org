@@ -1,0 +1,4 @@
+* Example
+Last time, George's problem. Pairs.
+
+Using vectors

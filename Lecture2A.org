@@ -1,0 +1,220 @@
+* Higher-order Procedures
+$$
+\sum_{i = a}^{b} i
+$$
+
+#+begin_src scheme
+  (define (sum-int a b)
+    (if (> a b)
+        0
+        (+ a
+           (sum-int (1+ a) b))))
+#+end_src
+
+$$
+\sum_{i = a}^{b} i^2
+$$
+
+#+begin_src scheme
+  (define (sum-sq a b)
+    (if (> a b)
+        0
+        (+ (* a a)
+           (sum-sq (1+ a) b))))
+#+end_src
+
+The above two programs are almost identical in terms of code. They only differ is the line
+before last line. It is a waste of time writing the same code twice.
+
+Another example: Leibnitz's formula:
+
+$$
+\sum_{i=a\text{ by}4}^{b} \frac{1}{i(i+2)}
+$$
+
+There is something to do with the $\sum$ that makes them similar.
+#+begin_src scheme
+  (define (pi-sum a b)
+    (if (> a b)
+        0
+        (+ (/ 1 (* a (+ a 2)))
+           (pi-sum (+ a 4) b))))
+#+end_src
+
+Anytime we have a bunch of things like this that are identical, we're going to have to come
+up with some sort of abstractions to cover them.
+
+Common patterns of usage.
+
+A general patterns:
+
+#+begin_src scheme
+  (define (<name> a b)
+    (if (> a b)
+        0
+        (+ (<term> a)
+           (<name> (<next> a) b))))
+#+end_src
+
+There is nothing special about numbers.
+
+** Defining sigma notation
+#+begin_src scheme
+  (define (sum term a next b);; the "term" and "next" are not numbers
+    "'term' is the formula that get applied to
+     each element between lower and upper bound
+     'next' is the step forward function.
+     'a' is the lower bound.
+     'b' is the upper bound."
+    (if (> a b)
+        0
+        (+ (term a)
+           (sum term       ;; formula
+                (next a)   ;; next lower bound
+                next       ;; next index procedure
+                b))))      ;; upper bound
+#+end_src
+
+Now we can use this higher-order function to represent all those procedures we wrote
+before:
+#+begin_src scheme
+  (define (sum-int a b)
+    (define (identity a) a)
+    (sum identity a 1+ b))
+
+  (define (sum-sq a b)
+    (define (square x) (* x x))
+    (sum square a 1+ b))
+
+  (define (pi-sum a b)
+    (sum (lambda (i) (/ 1 (* i (+ i 2))))
+         a
+         (lambda (i) (+ i 4))
+         b))
+#+end_src
+
+An iterative version of the higher-order sum:
+#+begin_src scheme
+  (define (sum term a next b)
+    (define (iter j ans)
+      (if (> j b)
+          ans
+          (iter (next j)
+                (+ (term j) ans))))
+    (iter a 0))
+#+end_src
+
+The distinction between recursive and iterative lies not in whether or not a procedure calls
+itself within the procedure, rather it lies in whether or not that internal call can or cannot
+be executed immediately. Recursive ones need to wait for a telescoped procedure to complete 
+and returned before it can proceed the rest of its execution.
+
+** Square Root Program
+#+begin_src scheme
+  (define (sqrt x)
+    (define tolerance 0.00001)
+    (define (good-enuf? y)
+      (< (abs (- (* y y) x))
+         tolerance))
+    (define (improve y)
+      (average (/ x y) y))
+    (define (try y)
+      (if (good-enuf? y)
+          y
+          (try (improve y))))
+    (try 1))
+#+end_src
+
+This program is very complicated and there is no way anyone can just glance at it and
+say: "Oh, it's very obvious that this is a program that computes the square root."
+
+But what's the real idea? Let's try use abstraction to clarify what's going on.
+$$y \mapsto^{f} \frac{y + \frac{x}{y}}{2} $$
+
+And the fix point:
+$$f(\sqrt{x}) = \sqrt{x}$$
+
+So this abstract to FINDING A FIXED POINT of $f$
+#+begin_src scheme
+  (define (sqrt x)
+    (fixed-point
+     (lambda (y) (average (/ x y) y))
+     1))
+  ;; then how are we going to come up with fixed points?
+  (define (fixed-point f start)
+    (define tolerance 0.00001)
+    (define (close-enuf? u v)
+      (< (abs (- u v)) tolerance))
+    (define (iter old new)
+      (if (close-enuf? old new)
+          new
+          (iter new (f new))))
+    (iter start (f start)))
+#+end_src
+
+But why should it work? Is there any other function have the same fixed point?
+What about $$y \mapsto \frac{x}{y}$$?
+It oscillates.
+I want to damp out these oscillations. What we really doing with the square root procedure
+is we are averaging two oscillating values to damp out the oscillations. This is a classical
+way of damping.
+
+#+begin_src scheme
+  (define (sqrt x)
+    (fixed-point
+     (average-damp (lambda (y) (/ x y)))
+     1))
+
+  (define average-damp
+    (lambda (f)
+      (lambda (x) (average (f x) x))))
+  ;; seems there are many confusions about the lambda syntax
+  ;; another way to write it without anonymous procedures:
+  (define (average-damp f)
+    (define (foo x)
+      (average (f x) x))
+    foo)
+#+end_src
+
+** Practice
+Newton's method: find the roots that's the zeros of functions.
+To find a $y$ such that:
+$$
+f(y) = 0
+$$
+Start with some guess, $y_0$, and iterate:
+1. $y_{n+1} = y_{n} - \frac{f(y_n)}{\frac{\partial f}{\partial y}\rvert_{y=y_n}}$
+
+#+begin_src scheme
+  (define (sqrt x)
+    (newton (lambda (y) (- x (square y)))
+            1))
+
+  ;; then define the Newton's method
+  (define (newton f guess)
+    (define df (deriv f))
+    (fixed-point
+     (lambda (x) (- x (/ (f x) (df x))))
+     guess))
+  ;; what about derivative?
+  (define dx 0.000001)
+  (define deriv
+    (lambda (f)
+      (lambda (x)
+        (/ (- (f (+ x dx))
+              (f x))
+           dx))))
+#+end_src
+
+Start with some mathematics function, and use wishful thinking and goes into implementing
+by assuming we have something in hand already, use it to build the solution.
+And worry about that thing later.
+
+Wishful thinking is essential to good computer science.
+
+*** The rights and privileges of first-class citizens in Programming Languages
++ To be named by variables
++ To be passed as arguments to procedures
++ To be returned as values of procedures
++ To be incorporated into data structures
+
