@@ -1,0 +1,207 @@
+* Building Abstractions with Data
+#+begin_center
+We now come to the decisive step of mathematical abstraction: we forget about what the symbols stand for.
+...[The mathematician] need not be idle; there are many operations which he may carry out with these symbols,
+without ever having to look at the things they stand for.
+--- Hermann Weyl, The Mathematical Way of Thinking
+#+end_center
+
+We concentrated in chapter 1 on computational processes and on the role of procedures in program design.
+We saw *how to use primitive data* (numbers) and *primitive operations* (arithmetic operations), *how to combine procedures to form compound procedures through composition*, *conditionals* and the *use of parameters*, 
+and *how to abstract procedures by using* ~define~.
+
+We saw that a procedure can be regarded as a pattern for the local evolution of a process, and we classified, reasoned about and performed simple algorithmic analyses of some common patterns for processes as embodied in procedures. 
+
+*We also saw that higher-order procedures enhance the power of our language by enabling us to manipulate, and there by to reason in terms of, general methods of computation. This is much of the essence of programming.*
+
+In this chapter we are going to look at more complex data. All the procedures in chapter 1 operate on simple numerical data, and simple data are not sufficient for many of the problems we wish to address using computation. Programs are typically designed to model complex phenomena, and more often than not one must construct computational objects that have several parts in order to model real-world phenomena that have several aspects. Thus, whereas our focus in chapter 1 was on building abstractions by combining procedures to form compound procedures, we turn in this chapter to another key aspect of any programming language: the mans it provides for building abstractions by combining data objects to form /compound data/.
+
+The reason that we want compound data in a programming language: *to elevate the conceptual level at which we can design our programs*, *to increase the modularity of our designs*, and *to enhance the expressive power of our language*. 
+
+Just as the ability to define procedures enables us to deal with processes at a higher-order conceptual level that of the primitive operations of the language, the ability to construct compound data objects enables us to deal with data at a higher conceptual level than that of the primitive data objects of the objects of the language.
+
+Consider designing a system to perform arithmetic with rational numbers. We could imagine an operation ~add-rat~ that takes two rational numbers and produces their sum.
+
+A rational number can be thought of two integers: a numerator and a denominator. Thus, designing a program that within which a rational number is represented by two integers and where ~add-rat~ is implemented by two procedures for adding up and creating the numerator and denominator of the sum respectively can solve the problem.However, using that approach means we need to always explicitly keep track of which numerators correspond to which denominators. In a system intended to perform many operations on many rational numbers, such bookkeeping details would clutter the programs substantially, to say nothing of what they would do to our minds. 
+
+It would be much better if we could "glue together" a numerator and denominator to form a pair--a /compound data object/--that our programs could manipulate in a way that would be consistent with regarding a rational number as a single conceptual unit.
+
+The use of compound data also enables us to increase the modularity of our programs. If we can manipulate rational numbers directly as objects in their own right, then we can separate the part of our program that deals with rational numbers per se from the details of how rational numbers may be represented as pairs of integers.
+
+The general technique represented from the parts of a program that deal with how data objects are used is a powerful design methodology called /data abstraction/. We will see how data abstraction makes programs much easier to design, maintain, and modify.
+
+The use of compound data leads to a real increase in the expressive power of our programming language. Consider the idea of forming a "linear combination" $ax+by$. We might like to write a procedure that would accept $a$, $b$, $x$, and $y$ as arguments and return the value of $ax+by$. This presents no difficulty if the arguments are to be numbers, because we can readily define the procedure
+#+begin_src scheme
+  (define (linear-combination a b x y)
+    (+ (* a x) (* b y)))
+#+end_src
+
+But suppose we are not concerned only with numbers. Suppose we would like to express, in procedural terms, the idea that one can from linear combinations whenever addition and multiplication are defined--for rational numbers, complex numbers, polynomials, or what ever. We can express this as a procedure of the form
+#+begin_src scheme
+  (define (linear-combination a b x y)
+    (add (mul a x) (mul b y)))
+#+end_src
+
+where ~add~ and ~mul~ are not the primitive procedures ~+~ and ~*~ but rather more complex things that will perform the appropriate operations for whatever kinds of data we pass in as the arguments ~a~, ~b~, ~x~, and ~y~. The key point is that the only thing ~linear-combination~ should need to know about ~a~, ~b~, ~x~, and ~y~ is that the procedures ~add~ and ~mul~ will perform the appropriate manipulations. From the perspective of the procedure ~linear-combination~, it is irrelevant what ~a~, ~b~, ~x~, and ~y~ are and even more irrelevant how they might happen to be represented in terms of more primitive data.
+
+This same example shows why it is important that our programming language provide the ability to manipulate compound objects directly: Without this, there is no way for a procedure such as ~linear-combination~ to pass its arguments along to ~add~ and ~mul~ without having to know their detailed structure.
+
+The ability to directly manipulate procedures provides an analogous increase in the expressive power of a programming language. For example, in section 1.3.1 we introduced the ~sum~ procedure, which takes a procedure ~term~ as an argument and computes the sum of the ~term~ over some specified interval. In order to define ~sum~, it is crucial that we be able to speak of a procedure such as ~term~ as an entity in its own right, without regard for how ~term~ might be expressed with more primitive operations.
+Indeed, if we did not have the notion of a "procedure", it is doubtful that we would ever even think of the possibility of defining an operation such as ~sum~. Moreover, insofar as performing the summation is concerned, the details of how ~term~ may be constructed from more primitive operations are irrelevant.
+
+We begin this chapter by implementing the rational-number arithmetic system mentioned above. This will form the background for our discussion of *compound data* and *data abstraction*.As with compound procedures, the main issue to be addressed is that of abstraction as a technique of coping with complexity, and we will see how data abstraction enables us to erect suitable *abstraction barriers* between different parts of a program.
+
+We will see that the key to forming compound data is that *a programming language should provide some kind of "glue" so that data objects can be combined to form more complex data objects*.
+
+There are many possible kinds of glue. Indeed, we will discover how to form compound data using no special "data" operations at all, only procedures. This will further blur the distinction between "procedure" and "data", which was already becoming tenuous toward the end of chapter 1. We will also explore some conventional techniques for representing sequences and trees.
+
+One key idea in dealing with compound data is the notion of *closure*--that the glue we use for combining data objects should allow us to combine not only primitive data objects, but compound data objects as well.
+
+Another key idea is that compound data objects can serve as /conventional interfaces/ for combining program modules in mix-and-match ways. We illustrate some of these ideas by presenting a simple graphics language that exploits closure.
+
+We will then augment the representational power of our language by introducing /symbolic expressions/--data whose elementary pats can be arbitrary symbols rather than only numbers. We explore various alternatives for representing sets of objects. We will find that, just as a given processes, there are many ways in which a given data structure can be represented in terms of simpler objects, and the choice of representation can have significant impact on the time and space requirements of processes that manipulate the data. We will investigate these ideas in the context of symbolic differentiation, the representation of sets, and the encoding of information.
+
+Next we will take up the problem of working with data that may be represented differently by different parts of a program. This leads to the need to implement *generic operations*, which must handle many different types of data. Maintaining modularity in the presence of generic operations requires more powerful abstraction barriers than can be erected with simple data abstraction alone. In particular, we introduce /data-directed programming/ as a technique that allows individual data representations to be designed in isolation and then combined /additively/ (i.e., without modification). To illustrate the power of this approach to system design, we close the chapter by applying what we have learned to the implementation of a package for performing symbolic arithmetic on polynomials, in which the coefficients of the polynomials can be integers, rational numbers, complex numbers, and even other polynomials.
+** Introduction to Data Abstraction
+In section 1.1.8, we noted that a procedure used as an element in creating a more complex procedure could be regarded not only as a collection of particular procedure could be regarded not only as a collection of particular operations but also as a procedural abstraction. That is, *the details of how the procedure was implemented could be suppressed, and the particular procedure itself could be replaced by any other procedure with the same overall behavior*. In other words, we could make an abstraction that would separate the way the procedure would be used from the details of how the procedure would be implemented in terms of more primitive procedures. The analogous notion for compound data is called *Data Abstraction*. Data abstraction is a methodology that enables us to isolate how a compound data object is used from details of how it is constructed from more primitive data objects.
+
+The basic idea of data abstraction is to structure the programs that are to use compound data objects so that they operate on "abstract data." That is, our programs should use data in such a way as to make no assumptions about the data that are not strictly necessary for performing the task at hand. At the same time, a "concrete" data representation is defined independent of the programs that use the data. The interface between these two parts of our system will be a set of procedures, called /selectors/ and /constructors/, that implement the abstract data in terms of the concrete representation. To illustrate this technique, we will consider how to design a set of procedures for manipulating rational numbers.
+*** Example: Arithmetic Operations for Rational Numbers
+Suppose we want to do arithmetic with rational numbers. We want to be able to add, subtract, multiply, and divide them and to test whether two rational numbers are equal.
+
+Let us begin by assuming that we already have a way of constructing a rational number from a numerator and a denominator. We also assume that, given a rational number, we have a way of extracting (or selecting) its numerator and its denominator. Let us further assume that the constructor and selectors are available as procedures:
+- ~(make-rat <n> <d>)~ returns the rational number whose numerator is the integer ~<n>~ and whose denominator is the integer ~<d>~.
+- ~(numer <x>)~ returns the numerator of the rational number ~<x>~
+- ~(denom <x>)~ returns the denominator of the rational number ~<x>~.
+
+We are using here a powerful strategy of synthesis: /wishful thinking/. We haven't yet said how a rational number is represented, or how the procedures ~numer~, ~denom~, ~make-rat~ should be implemented. Even so, if we did have these three procedures, we could then ~add~, ~subtract~, ~multiply~, ~divide~, and test equality by using the following relations:
+
+$$
+\begin{align*}
+& \frac{n_1}{d_1} + \frac{n_2}{d_2} = \frac{n_1 d_2 + n_2 d_1}{d_1 d_2} \\
+& \frac{n_1}{d_1} - \frac{n_2}{d_2} = \frac{n_1 d_2 - n_2 d_1}{d_1 d_2} \\
+& \frac{n_1}{d_1} \cdot \frac{n_2}{d_2} = \frac{n_1 n_2}{d_1 d_2}\\
+& \frac{n_1/d_1}{n_2/d_2} = \frac{n_1 d_2}{d_1 n_2}\\
+& \frac{n_1}{d_1} = \frac{n_2}{d_2}\ \ \text{if and only if}\ n_1 d_2 = n_2 d_1
+\end{align*}
+$$
+
+We can express these rules as procedures:
+#+begin_src scheme
+  (define (add-rat x y)
+    (make-rat (+ (* (numer x) (denom y))
+                 (* (numer y) (denom x)))
+              (* (denom x)
+                 (denom y))))
+
+  (define (sub-rat x y)
+    (make-rat (- (* (numer x) (denom y))
+                 (* (numer y) (denom x)))
+              (* (denom x)
+                 (denom y))))
+
+  (define (mul-rat x y)
+    (make-rat (* (numer x) (numer y))
+              (* (denom x) (denom y))))
+
+  (define (div-rat x y)
+    (make-rat (* (numer x) (denom y))
+              (* (denom x) (numer y))))
+
+  (define (equal-rat? x y)
+    (= (* (numer x) (denom y))
+       (* (numer y) (denom x))))
+#+end_src
+
+Now we have the operations on rational numbers defined in terms of the selector and constructor procedures ~numer~, ~denom~, and ~make-rat~. But we haven't yet defined these. What we need is some way to glue together a numerator and a denominator to form a rational number.
+**** Pairs
+To enable us to implement the concrete level of our data abstraction, our language provides a compound structure called a ~pair~, which can be constructed with the primitive procedure ~cons~. This procedure takes two arguments and returns a compound data object that contains the two arguments as parts. Given a pair, we can extract the parts using the primitive procedures ~car~ and ~cdr~. Thus, we can use ~cons~, ~car~, and ~cdr~ as follows:
+#+begin_src scheme
+  (define x (cons 1 2))
+
+  (car x) ;; 1
+  (cdr x) ;; 2
+#+end_src
+
+Notice that a pair is a data object that can be given a name and manipulated, just like a primitive data object. Moreover, ~cons~ can be used to form pairs whose elements are pairs, and so on:
+#+begin_src scheme
+  (define x (cons 1 2))
+  (define y (cons 3 4))
+  (define z (cons x y))
+
+  (car (car z));; 1
+  (car (cdr z));; 3
+#+end_src
+In section 2.2 we will see how this ability to combine pairs means that pairs can be used as general-purpose building blocks to create all sorts of complex data structures. The single compound-data primitive /pair/, implemented by the procedures ~cons~, ~car~, and ~cdr~ is the only glue we need. Data objects constructed from pairs are called /list-structured/ data.
+**** Representing Rational Numbers
+Pairs offer a natural way to complete the rational-number system. Simply represent a rational number as a pair of two integers: a numerator and a denominator. Then ~make-rat~, ~numer~, and ~denom~ are readily implemented as follows:
+#+begin_src scheme
+  (define (make-rat n d) (cons n d))
+  (define (numer x) (car x))
+  (define (denom x) (cdr x))
+#+end_src
+
+Also, in order to display the results of our computations, we can print rational numbers by printing the numerator, a slash, and the denominator.
+#+begin_src scheme
+  (define (print-rat x)
+    (newline)
+    (display (numer x))
+    (display "/")
+    (display (denom x)))
+#+end_src
+
+Now we can try our rational-number procedures:
+#+begin_src scheme
+  (define one-half (make-rat 1 2))
+  (print-rat one-half)
+  (define one-third (make-rat 1 3))
+  (print-rat (add-rat one-half one-third))
+  (print-rat (mul-rat one-half one-third))
+  (print-rat (add-rat one-third one-third))
+#+end_src
+
+As the final example shows, our rational-number implementation does not reduce rational numbers to lowest terms. We can remedy this by changing ~make-rat~. If we have a ~gcd~ procedure like the one in section 1.2.5 that produces the greatest common divisor of two integers, we can use ~gcd~ to reduce the numerator and the denominator to lowest terms before constructing the pair:
+#+begin_src scheme
+  (define (make-rat n d)
+    (let ((g (gcd n d)))
+      (cons (/ n g) (/ d g))))
+#+end_src
+This modification was accomplished by changing the constructor ~make-rat~ without changing any of the procedures (such as ~add-rat~ and ~mul-rat~) that implement the actual operations.
+*** Abstraction Barriers
+Before continuing with more examples of compound data and data abstraction, let us consider some of the issues raised by the rational-number example. We define the rational-number operations in terms of a constructor ~make-rat~ and selectors ~numer~ and ~denom~. In general, the underlying idea of data abstraction is to identify for each type of data object a basic set of operations in terms of which all manipulations of data objects of that type will be expressed, and then to use only those operations in manipulating the data.
+
+#+begin_verse
+----------- Programs that use rational numbers -----------
+Rational Numbers in Problem domain
+
+----------- ~add-rat~ ~sub-rat~ ... ----------------------
+Rational numbers as numerators and denominators
+
+----------- ~make-rat~ ~numer~ ~denom~ -------------------
+Rational numbers as pairs
+
+----------- ~cons~ ~car~ ~cdr~ ---------------------------
+However pairs are implemented
+#+end_verse
+
+We can envision the structure of the rational-number system as shown in figure 2.1. The horizontal lines represent /abstraction barriers/ that isolate different "levels" of the system. At each level, the barrier separates the programs (above) that use the data abstraction from the programs (below) that implement the data abstraction. Programs use rational numbers manipulate them solely in terms of the procedures supplied "for public use" by the rational-number package: ~add-rat~, ~sub-rat~, ~mul-rat~, ~div-rat~, and ~equal-rat?~. These, in turn, are implemented solely in terms of the constructor and the selectors ~nake-rat~, ~numer~, and ~denom~, which themselves are implemented in terms of pairs. The details of how pairs are implemented are irrelevant to the rest of the rational-number package so long as pairs can be manipulated by the use of ~cons~, ~car~, and ~cdr~. In effect, procedures at each level are the interfaces that define the abstraction barriers and connect the different levels.
+
+This simple idea has many advantages. One advantage is that it makes programs much easier to maintain and to modify. Any complex data structure can be represented in a variety of ways with the primitive data structures provided by a programming language. Of course, the choice of representation influences the programs that operate on it; thus, if the representation were to be changed at some later time, all such programs might have to be modified accordingly. This task could be time-consuming and expensive in the case of large programs unless the dependence on the representation were to be confined by design to a very few program modules.
+
+For example, an alternate way to address the problem of reducing rational numbers to lowest terms is to perform the reduction whenever we access the parts of a rational number, rather than when we construct it. This leads to different constructor and selector procedures:
+#+begin_src scheme
+  (define (make-rat n d)
+    (cons n d))
+
+  (define (numer x)
+    (let ((g (gcd (car x) (cdr x))))
+      (/ (car x) g)))
+
+  (define (denom x)
+    (let ((g (gcd (car x) (cdr x))))
+      (/ (cdr x) g)))
+#+end_src
+
+The difference between this implementation and the previous once lies in when we compute the ~gcd~. If our typical use of rational numbers we access the numerators and denominators of the same rational numbers many times, it would be preferable to compute the ~gcd~ when the rational numbers are constructed. If not, we may be better off waiting until access time to compute the ~gcd~. In any case, when we change from one representation to the other, the procedures ~add-rat~, ~sub-rat~, and so on do not have to be modified at all.
+
+Constraining the dependence on the representation to a few interface procedures helps us design programs as well as modify them, because it allows us to maintain the flexibility to consider alternate implementations. To continue with our simple example, suppose we are designing a rational-number package and we can't decide initially whether to perform the ~gcd~ at construction time or at selection time. The data abstraction methodology gives us a way to defer that decision without losing the ability to make progress on the rest of the system.

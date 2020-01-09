@@ -44,10 +44,12 @@ systems by combining standard, well-understood pieces in a "mix and match" way.
 We control complexity by establishing new languages for describing a design, each of 
 which emphasizes particular aspects of the design and deemphasizes others.
 
+#+begin_center
 Underlying our approach to this subject is our conviction that "computer science" is 
 not a science and that its significance has little to do with computers
 The computer revolution is a revolution in the way we think and in the way we express
 what we think.
+#+end_center
 
 The essence of this change is the emergence of what might best be called **procedural epistemology**.
 --the study of the structure of knowledge from an imperative point of view, as opposed
