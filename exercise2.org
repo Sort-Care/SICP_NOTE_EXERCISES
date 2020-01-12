@@ -1,3 +1,4 @@
+#+STARTUP: nolatexpreview
 * Chapter 2 Exercises
 ** 2.1
 Define a better version of ~make-rat~ that handles both positive and negative arguments. ~Make-rat~ should normalize the sign so that if the rational number is positive, both the numerator and denominator are positive, and if the rational number is negative, only the numerator is negative.
@@ -230,4 +231,62 @@ First, let's try evaluate ~(add-1 zero)~:
     (lambda (x)
       (f x)))
   ;; ????
+#+end_src
+
+*** What is Church Numerals?
+I really had difficulties in understanding this. So I resort to the wikipedia page, not for the exact answer, but for some insights.
+
+And the following sentence at the very beginning of the article was very helpful:
+#+begin_quote
+Church numerals are the representations of natural numbers under Church encoding. The higher-order function that represents natural number $n$ is a function that maps any function $f$ to its n-fold composition. In simpler terms, the "value" of the numeral is equivalent to the number of times the function encapsulates its argument.
+
+All Church numerals are functions that take two parameters.
+#+end_quote
+
+$$
+f^{\circ n} = f \circ f \circ f \circ \cdots \circ f
+$$
+
+And to do the ~+~ procedure:
+
+$$
+plus(m, n) = m + n
+$$
+
+uses the identity
+$$
+f^{\circ (m+n)} (x) = f^{\circ m} ( f^{\circ n} (x))
+$$
+
+*** Then, Implement ~one~, ~two~, and ~+~ Procedure
+#+begin_src scheme
+  (define one
+    (lambda (f) (lambda (x) (f x))))
+
+  (define two
+    (lambda (f) (lambda (x) (f (f x)))))
+
+  (define +
+    (lambda (f) (lambda (x) ((m f) ((n f) x)))))
+#+end_src
+
+To improve our understanding here, I decided to do more. Next I will try the ~mult~ procedure:
+
+$$
+f^{\circ (m\cdot n)}(x) = (f^{\circ n})^{\circ m} (x)
+$$
+
+which means apply function $f^{\cric n}$, $m$ times to $x$.
+
+#+begin_src scheme
+  (define (mul m n)
+    (lambda (f) (lambda (x) ((m
+                              (n f))
+                             x))))
+#+end_src
+
+That is not so hard to understand. But next function: /predecessor/, is really hard to wrap your mind around it.
+The predecessor function must return a function that applies its parameter $n-1$ times. This is achieved by building a container around $f$ and $x$, which is initialized in a way that omits the application of the function the first time.
+#+begin_src scheme
+;; TODO predecessor and minus procedure for Church Numerals
 #+end_src
