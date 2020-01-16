@@ -357,16 +357,196 @@ Ben Bitdiddle, an expert systems programmer, looks over Alyssa's shoulder and co
   (define (div-interval x y)
     (if (<= (* (lower-bound y) (upper-bound y)) 0)
         (error "Divided by an interval that spans zero.")
-        (make-interval (/ 1.0 (upper-bound y))
-                       (/ 1.0 (lower-bound y)))))
+        (mul-interval x
+                      (make-interval (/ 1.0 (upper-bound y))
+                                     (/ 1.0 (lower-bound y))))))
 #+end_src
 ** 2.11
 In passing, Ben also cryptically comments: "By testing the signs of the endpoints of the intervals, it is possible to break ~mul-interval~ into nine cases, only one of which requires more than two multiplications." Rewrite this procedure using Ben's suggestion.
 #+begin_src scheme
-
+  (define (mul-interval x y)
+    (let ((l1 (lower-bound x))
+          (u1 (upper-bound x))
+          (l2 (lower-bound y))
+          (u2 (upper-bound y)))
+      (cond ((and (>= l1 0) (>= l2 0)) ;; both intervals are non-negative
+             (make-interval (* l1 l2)
+                            (* u1 u2)))
+            ((and (< l1 0) (>= u1 0) (>= l2 0)) ;; x span zero, y above zero
+             (make-interval (* l1 u2)
+                            (* u1 u2)))
+            ((and (< u1 0) (>= l2 0)) ;; x below zero, y above zero
+             (make-interval (* l1 u2)
+                            (* u1 l2)))
+            ((and (>= l1 0) (< l2 0) (>= u2 0)) ;; x above zero, y span zero
+             (make-interval (* l2 u1)
+                            (* u1 u2)))
+            ((and (< l1 0) (>= u1 0) (< l2 0) (>= u2 0)) ;; x span zero, y span zero
+             (make-interval (min (* l1 u2) (* l2 u1))
+                            (max (* l1 l2) (* u1 u2))))
+            ((and (< u1 0) (< l2 0) (>= u2 0)) ;; x below zero, y span zero
+             (make-interval (* l1 u2)
+                            (* l1 l2)))
+            ((and (>= l1 0) (< u2 0)) ;; x above zero, y below zero
+             (make-interval (* l2 u1)
+                            (* u2 l1)))
+            ((and (< l1 0) (>= u1 0) (< u2 0)) ;; x span zero, y below zero
+             (make-interval (* l2 u1)
+                            (* l2 l1)))
+            ((and (< u1 0) (< u2 0)) ;; x below zero, y below zero
+             (make-interval (* l1 l2)
+                            (* u1 u2))))))
 #+end_src
 ** 2.12
+Define a constructor ~make-center-percent~ that takes a center and a percentage tolerance and produces the desired interval. You must also define a selector ~percent~ that produces the percentage tolerance for a given interval. The ~center~ selector is the same as the one shown above.
+#+begin_src scheme
+  (define (make-center-percent c p)
+    (let ((t (* c p)))
+      (make-interval (- c t)
+                     (+ c t))))
+
+  (define (center i)
+    (/ (+ (lower-bound i) (upper-bound i)) 2))
+
+  (define (percent i)
+    (let ((c (center i)))
+      (/ (- c (lower-bound i))
+         c)))
+#+end_src
 ** 2.13
+Show that under the assumption of small percentage tolerance there is a simple formula for the approximate percentage tolerance of the product of two interval in terms of the tolerances of the factors. You may simplify the problem by assuming that all numbers are positive.
+
+Let $c_i$, $p_i$, $l_i$, $u_i$ be the center, percentage, lower bound, upper bound of interval $i$. Say $I_3$ is the result of multiplying $I_1$ and $I_2$.
+
+$$
+\begin{align*}
+l_1 &= c_1 - c_1 p_1 \\
+l_2 &= c_2 - c_2 p_2 \\
+l_3 &= c_1 c_2 (1 - p_1) (1 - p_2) \\
+u_3 &= c_1 c_2 (1 + p_1) (1 + p_2) \\
+c_3 &= \frac{c_1 c_2 ((1 - p_1) (1 - p_2) + (1 + p_1) (1 + p_2))}{2} \\
+p_3 &= \frac{c_3 - l_3}{c_3} \\
+    &= \frac{ \frac{c_1 c_2 ( (1 + p_1) (1 + p_2) - (1 - p_1) (1 - p_2))}{2} }{c_3} \\
+    &= \frac{(1 + p_1) (1 + p_2) - (1 - p_1) (1 - p_2)}{(1 + p_1) (1 + p_2) + (1 - p_1) (1 - p_2)} \\
+    &= \frac{p_1 + p_2}{1 + p_1 p_2}
+\end{align*}
+$$
 ** 2.14
+Demonstrate that Lem is right. Investigate the behavior of the system on a variety of arithmetic expressions. Make some intervals $A$ and $B$, and use them in computing the expressions $A/A$ and $A/B$. You will get the most insight by using intervals whose width is a small percentage of the center value. Examine the results of the computation in center-percent form (see exercise 2.12).
+
+#+begin_src scheme
+  (define (print-interval i)
+    (newline)
+    (display "Lower Bound: ")
+    (display (lower-bound i))
+    (newline)
+    (display "Upper Bound: ")
+    (display (upper-bound i))
+    (newline)
+    (display "Center: ")
+    (display (center i))
+    (newline)
+    (display "Tolerance Percent: ")
+    (display (percent i)))
+#+end_src
+
+Ran it with:
+
+#+begin_src scheme
+  (define a (make-center-percent 50 0.0001))
+  (define b (make-center-percent 63 0.0001))
+
+  (print-interval (par1 a b))
+
+  (print-interval (par2 a b))
+#+end_src
+
+Seems like the ~par1~ is giving the wrong answer here. The center is relatively accurate, but the lower bound and upper bound are not. And that leads to the percentage of tolerance of the result is not correct. But why does this happen?
+#+begin_src bash
+=> (print-interval (par1 a b))
+
+Lower Bound: 27.867744477764607
+Upper Bound: 27.88447014170444
+Center: 27.876107309734522
+Tolerance Percent: 2.9999999200013147e-4
+;Unspecified return value
+
+=> (print-interval (par2 a b))
+
+Lower Bound: 27.87331858407079
+Upper Bound: 27.878893805309733
+Center: 27.876106194690262
+Tolerance Percent: 1.0000000000007373e-4
+;Unspecified return value
+#+end_src
+
+I get the most insight for this problem, in contrast to what the text said, from using intervals with large width.
+
+It turned out that ~par1~ and ~par2~ are not computing the same thing at all when $R_1$ and $R_2$ are intervals. To see why, let's see what the procedure is really doing by explicitly writing out the calculations.
+
+Let $A = (L_1, U_1)$, $B = (L_2, U_2)$.
+
+For ~par1~:
+$$
+\begin{align*}
+(mul \; a \; b) &= (L_1 L_2, U_1 U_2) \\
+(add \; a \; b) &= (L_1 + L_2, U_1 + U_2) \\
+\text{then perform division} &\\
+\frac{(mul \; a \; b)}{(add \; a \; b)} &= (\frac{L_1 L_2}{U_1 + U_2}, \frac{U_1 U_2}{L_1 + L_2} )
+\end{align*}
+$$
+
+While for ~par2~:
+
+$$
+\begin{align*}
+(div \; one \; a) &= (\frac{1}{U_1}, \frac{1}{L_1}) \\
+(div \; one \; b) &= (\frac{1}{U_2}, \frac{1}{L_1}) \\
+\text{then add them together} &\\
+sum &= (\frac{U_1 + U_2}{U_1 U_2}, \frac{L_1 + L_2}{L_1 L_2}) \\
+\text{finally, divide one by the sum} &\\
+(div \; one \; sum) &= (\frac{L_1 L_2}{L_1 + L_2}, \frac{U_1 U_2}{U_1 + U_2})
+\end{align*}
+$$
+
+The problem is, although the two formulas are equivalent in pure algebra sense, they are not under the interval arithmetic. It lacks the property of $\frac{A}{B} \cdot B = A$. In the current interval arithmetic system, $\frac{A}{B} \cdot B \neq A$ in most cases (any case that the lower bound and upper bound of $B$ are not the same). And that, is what caused the inconsistency between two ways of computing the parallel resistor value.
+
+More generally, the problem is, $A \cdot \frac{1}{A} \neq (1, 1)$. To put it in words, the product of an interval and its inverse ($(1, 1)$ divided by the interval) is not $(1,1)$. (Or, we should say $(1, 1)$ divided by an interval $i$, is not a proper inverse of $i$ at the first place. See next paragraph for more details.)
+
+That reminds me of the notion of *GROUP* in algebra. In the group theory, there are some important properties:
+1. The group operation $\circ$ is closed. $a\circ b = c \in G$.
+2. The group operation is associative, $a \circ (b \circ c) = (a \circ b) \circ c$.
+3. There exists an /neutral/ element (or identity element), $1 \in G$, such that $a\circ 1 = 1 \circ a = a$ for all $a\in G$.
+4. $\forall a \in G$, there exists an element $a^{-1} \in G$, called the /inverse/ of $a$, such that $a \circ a^{-1} = a^{-1} \circ a = 1$.
+5. A group $G$ is abelian (or commutative) if, furthermore, $a \circ b = b \circ a$ for all $a,b \in G$.
+
+If we define that an interval is valid only when the lower bound is not bigger than its upper bound, then it is not possible for us to find a inverse of this interval for the operation multiplication. For example, let $i = (3, 4)$. Obviously the identity element in interval arithmetic is $(1, 1)$. Then for operation multiplication, the inverse of $i$ should be $(1/3, 1/4)$. However, it is not a valid interval at all.
+
+Thus the interval arithmetic system doesn't form a suitable group.
+
+However, if we can define that intervals like $(1/3, 1/4)$ to be "imaginary" interval, then we can actually find the "real equivalent" formula and thus get identical results.
+
+~par2~ generates the correct answer because it is closer to the formula of parallel resistors in a pure physical sense:
+$$
+\frac{1}{R_p} = \frac{1}{R_0} + \frac{1}{R_1} + \cdot + \frac{1}{R_n}
+$$
+
+And both ~par1~, ~par2~ can be considered "derived" from this formula. ~par2~, luckily, didn't touch the nasty situation of the interval multiplication arithmetic operation not being a group. But ~par1~ is not so luckily, and therefore always gives the wrong answer.
 ** 2.15
+Eva Lu Ator, another user, has also noticed the different intervals computed by different but algebraically equivalent expressions. She says that a formula to compute with intervals using Alyssa's system will produce tighter error bounds if it can be written in such a form that no variable that represents an uncertain number is repeated. Thus, she says, ~par2~ is a "better" program for parallel resistances that ~par1~. Is she right? Why?
+
+Basically, no. Because the reason for the wrong answer of Alyssa's system is more fundamental than just small errors accumulating, but in theory level.
+For this question, see the prolonged discussion in exercise 2.14.
 ** 2.16
+Explain, in general, why equivalent algebraic expressions may lead to different answers. Can you devise an interval-arithmetic package that does not have this shortcoming, or is this task impossible? (Warning: This problem is very difficult.)
+
+It is not about how we should re-define the behavior of the interval system, but rather we should re-define the meaning of "equivalent formulas". Some claim of equivalent ones in algebra settings are no longer true in interval arithmetic.
+
+So, it is generally not possible if we enforce validity on any interval. Because the intervals and the multiplication operation together doesn't form a closed group in algebraically meaning. 
+
+However, if we allow "imaginary intervals", it might be possible (not sure). I will not dive too deep into it now. But it sounds like something interesting to investigate so I will leave a TODO here.
+#+begin_src scheme
+;; TODO imaginary intervals
+#+end_src
+
+For more reasoning of this question, see the prolonged discussion in exercise 2.14.

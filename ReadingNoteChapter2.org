@@ -273,3 +273,56 @@ To divide two intervals, Alyssa multiplies the first by the reciprocal of the se
 #+end_src
 
 Following contents are in exercises 2.7-2.16.
+
+After debugging her program, Alyssa shows it to a potential user, who complains that her program solves the wrong problem. He wants a program that can deal with numbers represented as a center value and an additive tolerance; for example, he wants to work with intervals such as $3.5 \pm 0.15$ rather than $[3.35, 3.65]$. Alyssa returns to her desk and fixes this problem by supplying an alternate constructor and alternate selectors:
+#+begin_src scheme
+  (define (make-center-width c w)
+    (make-interval (- c w) (+ c w)))
+
+  (define (center i)
+    (/ (+ (lower-bound i) (upper-bound i)) 2))
+
+  (define (width i)
+    (/ (- (upper-bound i) (lower-bound i)) 2))
+#+end_src
+
+Unfortunately, most of Alyssa's users are engineers. Real engineering situations usually involve measurements with only a small uncertainty, measured as the ratio of the width of the interval to the midpoint of the interval. Engineers usually specify percentage tolerances on the parameters of devices, as in the resistor specifications given earlier.
+
+After considerable work, Alyssa P. Hacker delivers her finished system. Several years later, after she has forgotten all about it, she gets a frenzied call from an irate user, Lem E. Tweakit. It seems that Lem has noticed that the formula for parallel resistors can be written in two algebraically equivalent ways:
+
+$$
+\frac{R_1 R_2}{R_1 + R_2}
+$$
+
+and
+
+$$
+\frac{1}{1 / R_1 + 1 / R_2}
+$$
+
+He has written the following two programs, each of which computes the parallel-resistors formula differently:
+#+begin_src scheme
+  (define (par1 r1 r2)
+    (div-interval (mul-interval r1 r2)
+                  (add-interval r1 r2)))
+
+  (define (par2 r1 r2)
+    (let ((one (make-interval 1 1)))
+      (div-interval one
+                    (add-interval (div-interval one r1)
+                                  (div-interval one r2)))))
+#+end_src
+
+Lem complains that Alyssa's program gives different answers for the two ways of computing. This is a serious complaint.
+** Hierarchical Data and the Closure Property
+As we have seen, pairs provide a primitive "glue" that we can use to construct compound data objects. We usually use a box-and-pointer notation. Each object is shown as a /pointer/ to a box. The box for a primitive object contains a representation of the object. For example, the box for a number contains a numeral. The box for a pair is actually a double box, the left part containing (a pointer to) the ~car~ of the pair and the right part containing the ~cdr~.
+
+We have already seen that ~cons~ can be used to combine not only numbers but pairs as well. (You made use of this fact, or should have, in doing exercise 2.2 and 2.3.) As a consequence, *pairs provide a universal building block from which we can construct all sorts of data structures*.
+
+The ability to create pairs whose elements are pairs is the essence of list structure's importance as a representational tool. We refer to this ability as the *closure property* of ~cons~. In general, an operation for combining data objects satisfies the closure property if the results of combining thins with that operation can themselves be combined using the same operation.
+
+The use of the word "closure" here comes from abstract algebra, where a set of elements is said to be closed under an operation if applying the operation to elements in the set produces an element that is again an element of the set. (I included this content in exercise 2.14's solution.) The Lisp community also (unfortunately) uses the word "closure" to describe a totally unrelated concept: A closure is an implementation technique for representing procedures with free variables. We do not use the word "closure" in this second sense in this book.
+
+Closure is the key to power in any means of combination because it permits us to create /hierarchical/ structures--structures made up of parts, which themselves are made up of parts, and so on.
+
+From the outset of chapter 1, we've made essential use of closure in dealing with procedures, because all but the very simplest programs rely on the fact that the elements of a combination can themselves be combinations. In this section, we take up the consequences of closure for compound data. We describe some conventional techniques for using pairs to represent sequences and trees, and we exhibit a graphics language that illustrates closure in a vivid way. 
