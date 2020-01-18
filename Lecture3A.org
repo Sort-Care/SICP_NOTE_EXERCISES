@@ -1,4 +1,348 @@
 * Example
 Last time, George's problem. Pairs.
 
-Using vectors
+Using vectors:
+#+begin_src scheme
+  (define (+vect v1 v2)
+    (make-vector
+     (+ (xcor v1) (xcor v2))
+     (+ (ycor v1) (ycor v2))))
+#+end_src
+
+#+begin_src scheme
+  (define (scale s v)
+    (make-vector (* s (xcor v))
+                 (* s (ycor v))))
+#+end_src
+
+So, those are two operations that are implemented using the representation of vectors. And the representation of vectors, for instance, is something we can build in terms of pairs.
+
+** Representing Vectors
+#+begin_src scheme
+  (define make-vect cons)
+  (define xcor car)
+  (define ycor cdr)
+#+end_src
+
+This is a little bit different, we defined these procedures directly to be what ~cons~, ~car~, and ~cdr~ is. Procedures can be objects.
+
+** Representing Line Segments
+#+begin_src scheme
+  (define make-segment cons)
+  (define seg-start car)
+  (define seg-end cdr)
+#+end_src
+
+** Closure
+The set of data objects in Lisp is closed under the operation of forming pairs. ([[https://en.wikipedia.org/wiki/Permutation_group][Permutation Group]]). That is the thing that allows us to build complexity. And that seems obvious, but remember, a lot of the things in the computer languages that people use are not closed. For example, forming arrays in basic and Fortran is not a closed operation, because you can make an array of numbers or character strings or something, but you can't make an array of arrays.(What about the operation of forming arrays in C++? Is that closed?)
+
+And when you look at means of combination, you should be asking yourself whether things are closed under that means of combination.
+
+Because we can form pairs of pairs, we can start using pairs to glue things together in all sorts of ways. 
+
+(My Question: Given $n$, numbers, how many ways of combining them exist that will lead to different box-and-pointer diagrams? DP? Recursive?)
+
+There are a lot of different ways that I can start using pairs to glue things together, and so it'll be a good idea to establish some kind of conventions, that allow us to deal with this thing in some conventional way, so we're not constantly making an ad hoc choice.
+** List
+Lisp has a particular convention for representing a sequence of thins as, essentially, a chain of pairs, and that's called a List. 
+
+An example of a chain of pairs.
+#+begin_src scheme
+  (cons 1
+        (cons 2
+              (cons 3
+                    (cons 4 nil))))
+#+end_src
+
+Lisp has a operation ~list~, which is just an abbreviation for this nest of ~cons~.
+
+#+begin_src scheme
+  (list 1 2 3 4)
+
+(define 1-to-4 (list 1 2 3 4))
+#+end_src
+
+How do we get 2?
+#+begin_src scheme
+(car (cdr 1-to-4)) ;; 2
+(car (cdr (cdr 1-to-4))) ;; 3
+#+end_src
+And so on.
+
+One very common operation we do on the lists is take a list and do something to every element in that list, and return you a list of the results.
+
+For example,
+#+begin_src scheme
+  (scale-list 10 1-to-4) ;; -> (10 20 30 40)
+#+end_src
+
+~cdr~-ing down a list: (recursively)
+#+begin_src scheme
+  (define (scale-list s l)
+    (if (mull? l)
+        nil
+        (cons (* (car l) s)
+              (scale-list s (cdr l)))))
+#+end_src
+
+There's a general pattern there means I shouldn't be writing this procedure at all. What I should do is write a procedure that's the general pattern itself that says, do something to everything in the list and define this thing in terms of that. Right, make some higher order procedure, and here's the higher order procedure that does that. It's called ~MAP~. What ~map~ does is it takes a list, takes a list, and it takes a procedure ~p~, and it returns the list of the elements gotten by applying ~p~ to each successive element in the list.
+
+#+begin_src scheme
+  (define (map p l)
+    (if (null? l)
+        nil
+        (cons (p (car l)) ;; apply p to the first element
+              (map p (cdr l))))) ;; map down the rest of the list
+#+end_src
+
+#+begin_src scheme
+  (define (scale s l)
+    (map (lambda (item) (* item s))
+         l))
+#+end_src
+
+*One of the values of doing this is that you start to see commonality. You are capturing general patterns of usage.*
+
+** My Question: How to write ~map~ in an iterative manner?)
+#+begin_src scheme
+  (define (map p l)
+    (define (map-iter res origin)
+      (if (null? origin)
+          res
+          (map-iter (put-in res (p (car origin)))
+                    (cdr origin))))
+    (define (put-in res item)
+      (if (null? res)
+          (cons item res)
+          (cons (car res)
+                (put-in (cdr res) item))))
+    (map-iter '() l))
+#+end_src
+
+Notice here, although ~put-in~ is still a recursive process. I haven't figured out how to do it iteratively without using mutable data objects.
+** Thinking in terms of ~map~
+*The interesting thing starts to happen when you start thinking in terms of ~map~, you stop thinking about whether it's iterative or recursive. And you just say, well there's this aggregate, there's this list and what I do is transform every item in the list, and I stop thinking about the particular control structure in order.* That is a very, very important idea.
+
+It really came from APL, that you stop thinking about control structures, and you start thinking about operations on aggregates. And about halfway through this course we'll see when we talk about stream processing, how that view of the world really comes into its glory.
+** ~for-each~
+It is something very much like ~map~, which is take a list and some action you want to do, and do it to each item in the list in sequence.
+#+begin_src scheme
+  (define (for-each proc list)
+    (cond ((null? list) "done")
+          (else (proc (car list))
+                (for-each proc
+                          (cdr list)))))
+#+end_src
+(So list is mutable?)
+~for-each~ does not create a list, it just does something. While ~map~ actually builds you this new collection of values that you might want to use.
+** Peter Henderson Example
+This example, pretty much summarizes everything that we've done up until now. And that's list structure and issues of abstraction, and representation and capturing commonality with higher order procedures, and also is going to introduce something we haven't really talked about a lot yet--what I said is the major third theme in this course: meta-linguistic abstraction, which is the idea that one of the ways of tackling complexity in engineering design is to build a suitable powerful language.
+
+When you think about a language, you think about it in terms of:
+1. What are the primitives;
+2. What are the means of combination;
+3. What are the means of abstraction.
+
+There's another theme that we'll see illustrated by this example, and that's the issue that there's no real difference, in some sense, between procedures and data.
+
+#+begin_comment
+I went to download the ~sicp-pict~ package. And it is embedded in ~sicp~ package in DrRacket. To test it out, you need first download DrRacket software (a bash install file), and run it through command line. Then find the executable file ~./bin/drracket~ and run it. It should boot up the DrRacket program. Documentations for [[https://docs.racket-lang.org/sicp-manual/index.html][sicp collections]].
+
+When I tested this, there was a bug in DrRacket 7.5 version when running with ~#lang sicp~, and will always lead to out of memory error. [[https://github.com/racket/drracket/issues/231][issue page]]. And it will be fixed in 7.6. But that's ok, we can still run the program with ~#lang racket~.
+#+end_comment
+
+On the top text area in DrRacket, write the following.
+#+begin_src scheme
+#lang racket
+(require sicp-pict)
+(paint einstein)
+#+end_src
+
+Hit the run button, and you should be able to see a picture of Einstein on the interactive window.
+*** Primitive
+~picture~, in this language, is going to be something that draws a figure scaled to fit a rectangle that you specify.
+*** Means of Combinations
+There's, for example, an operation called ~rotate~.
+~beside~: ~(beside pA pB s)~ takes two pictures, and put them together, from left to right, and their separate point defined by the value ~s~.
+~above~: similar to ~beside~.
+
+And so forth. And quickly we can build way more complicated pictures. The reason that we are able to do so, is the closure property. So whenever I have something, I can turn right around and use that as an element in something else.
+*** How it is actually implemented
+The basic element that sits under the table here is a thing called a rectangle. And what a rectangle is going to be, it's a thing that specified by an origin that's going to be some vector that says where the rectangle starts. And there's going to be some vector that I'm going to call the horizontal part of the rectangle, and another vector called the vertical part of the rectangle. Three vectors specify a rectangle.
+
+Now to actually build rectangles, what I'll assume is that we have a constructor called "make rectangle", or ~make-rect~, and selectors for ~horiz~, ~vert~, and ~origin~ that gives out pieces of the rectangle.
+
+Somehow we have to worry about taking the figure and scaling it to fit some rectangle that you give it. That's the basic thing you have to arrange, that these pictures can do.
+
+Every time I give you a rectangle, that defines, in some sense, a transformation from the standard square into that rectangle.
+
+$$
+(x,y) \mapsto ORIGIN \bigoplus x\cdot HORIZ \bigoplus y \cdot VERT
+$$
+
+Let's actually look at that as a procedure. What we want is the thing which tells us that particular transformation that a rectangle defines.
+#+begin_src scheme
+  (define (coord-map rect)
+    (lambda (point)
+      (+vect
+       (+vect (scale (xcor point)
+                     (horiz rect))
+              (scale (ycor point)
+                     (vert rect)))
+       (origin rect))))
+#+end_src
+
+Here is a procedure that builds what I'll call a primitive picture.
+#+begin_src scheme
+  (define (make-picture seglist)
+    (lambda (rect)
+      (for-each
+       (lambda (s)
+         (drawline
+          ((coord-map rect) (seg-start s))
+          ((coord-map rect) (seg-end s))))
+       seglist)))
+#+end_src
+
+It is a procedure returns a procedure that takes a rectangle as its argument.
+
+#+begin_src scheme
+  (define R (make-rect .....))
+  (define G (make-pict .....))
+
+  (G R)
+#+end_src
+
+Once you implemented the primitives in this way, the means of combination just fall out by implementing procedures. Suppose we want to implement ~beside~.
+
+#+begin_src scheme
+  (beside p1 p2 A) ;; example of usage
+
+  (define (beside p1 p2 a)
+    (lambda (rect)
+      (p1 (make-rect ;; p1 draw yourself in some rectangle
+           (origin rect)
+           (scale a (horiz rect))
+           (vert rect)))
+      (p2 (make-rect ;; p2 draw yourself in some other rectangle
+           (+vect (origin rect)
+                  (scale a (horiz rect)))
+           (scale (- 1 a) (horiz rect))
+           (vert rect)))))
+#+end_src
+
+Similarly, ~rotate~:
+#+begin_src scheme
+  (define (rotate90 pict)
+    (lambda (rect)
+      (pict (make-rect
+             (+vect (origin rect)
+                    (horiz rect))
+             (vert rect) ;; this is where the "horizontal" vector should be
+             (scale -1 (horiz rect))))))
+#+end_src
+
+Notice the crucial thing that is going on here, is you're using the representation of pictures as procedures to automatically get the closure property. Because what happen is, ~beside~ just has this thing ~p1~, it doesn't care if it is a line segment or if it is the result of some other operations. All ~beside~ has to know about, say, ~p1~ is that if you hand ~p1~ a rectangle, it will cause something to be drawn. And above that level, ~beside~ just doesn't care, it's none of its business how ~p1~ accomplishes that drawing. So you're using the procedural representation to ensure this closure.
+
+So implementing pictures as procedures makes these means of combination, both pretty simple and elegant. But that's not the real punchline. The real punchline comes when you look at the manes of abstractions in this language.
+*** Means of Abstractions
+We've implemented the means of combination themselves as procedures. And what that means is that when we got to abstract in this language, everything that Lisp supplies us for manipulating procedures is automatically available to do things in this picture language. The technical term I want to say is not only is this language implemented in Lisp, but the language is nicely *embedded* in Lisp. What I mean is, by embedding the language i this way, /all the power of Lisp is automatically available as an extension to whatever you want to do/.
+
+For example, suppose we want to make a thing that takes four pictures, ~A~, ~B~, ~C~, and ~D~, and makes a configuration that is equally draw them on four corners of a rectangle. I can just write a procedure that takes ~B~ above ~D~ and ~A~ above ~C~ and put those things beside each other. So we automatically have Lisp's ability to do procedure composition. This naturally falls out of the fact that the means of combination are themselves procedures. Even more complicated if we want to rotate some of the four pictures, we can just put an extra parameter in. It automatically comes from the embedding.
+
+Even more, suppose we want to use recursion. Let's look at a recursive means of combination on pictures.
+#+begin_src scheme
+  (define (right-push p n a)
+    (if (= n 0)
+        p
+        (beside p
+                (right-push p
+                            (- n 1)
+                            a)
+                a)))
+#+end_src
+
+Escher's Fish picture.
+
+One very nice project, by the way, would be to write a procedure that could take some basic figure like this George thing and start moving the ends of the lines around, so you got a really nice one when you went and did that "Square Limit" process.
+
+The important point, the difference between merely implementing something in a language and embedding something in a language, so you don't lose the original power of the language. And that is what Lisp is great at. See Lisp is a lousy language for doing any particular problem. *What it's good for is figuring out the right language that you want and embedding that in Lisp.* That's the real power of this approach of design.
+
+Of course we can go further, we can capture general methods of doing things as higher-order procedures. So just to illustrate and give you practice in looking at a fairly convoluted use of higher order procedures, let me show you the general idea of pushing some means of combination to recursively repeat it.
+
+#+begin_src scheme
+  (define (push comb)
+    (lambda (pict N A) ;; picture, number of times, scale factor
+      (repeated
+       (lambda (p) (comb pict p a))
+       N
+       pict)));; repeat N times
+
+  (define right-push (push beside))
+#+end_src
+
+*The main point I've been dwelling on is the notion of nicely embedding a language inside another language. So that all the power of this language like Lisp, or of the surrounding language is still accessible to you and appears as a natural extension of the language that you built.*
+
+By this point, you might be lost as to the question of what in the system is procedure and what is data. *There isn't any difference*. It's really both in some sense or neither in some sense.
+
+There's a more general point about the structure of the system as creating a language, viewing the engineering design process as one of creating language or rather one of creating a sort of sequence of layers of language. You see, there's this methodology, or maybe I should say mythology, that's, sort of, charitably called software "engineering". What does it say, it's says, well you go and you figure out your task, and you figure out exactly what you want to do. And once you find exactly what you want to do you find out that it breaks out into three sub-tasks, and you go and you start working on--and you work on this sub-task, and you figure out exactly what that is. And you find out it breaks out into three sub-tasks, and you specify them completely, and you go work on those sub-tasks and when you are done you come back way up in the level and work on the second sub-task in level 1. And you at the end end up with this beautiful edifice. You end up with a marvelous tree. And each of these nodes in the tree is exactly and precisely defined to do the wonderful, beautiful task to make it fit into the whole edifice.
+
+See only a computer scientist could possibly believe that you build a complex system like that.
+
+Contrast that with this Herderson example. *It didn't work like that*. What happened was that there was a sequence of layers of language.
+There was a layer of a thing that allowed us to build primitive pictures. And that was a language.
+
+#+begin_verse
+LANGUAGE OF SCHEMES OF COMBINATION
+--------------------
+LANGUAGE OF GEOMETRIC POSITIONS
+--------------------
+LANGUAGE OF PRIMITIVE PICTURES
+#+end_verse
+
+So what you have is, at each level, the objects that are being talked about are the things were erected at the previous level.
+
+What is the difference between this and the "software engineering tree" talked before? That is, in that tree, each node, in fact, each decomposition is being designed to do a specific task, whereas in the other scheme, what you have is a full range of linguistic power at each level. See what's happening there, at any level, it's not being set up to do a particular task. It's being set up to talk about a whole range of things.
+
+The consequence of that for design is that something that's designed in that method is likely to be more robust, where by robust, I mean that if you go and make some change in your description, it's more likely to be captured by a corresponding change, in the way that the language is implemented at the next level up, because you've made these levels full. You are not talking about a particular thing like ~beside~. You've given yourself a whole vocabulary to express things of that sort, so if you go and change your specifications a little bit, it's more likely that your methodology will be able to adapt to capture that change, whereas a design like the "tree" is not going to be robust, because if I go and change something in between, that might change the entire way that I decomposed everything down, further down the tree.
+
+*So very big difference in outlook in decomposition, levels of language rather than, sort of, a strict hierarchy.* Not only that, but when you have levels of language you've given yourself a different vocabularies for talking about the design at different levels.
+
+Well that's sort of a big point about the difference in software methodology that comes out from Lisp, and it all comes out of the notion that *the design process is not so much implementing programs as implementing languages*. And that's really the power of Lisp.
+
+* My Note
+I had difficulties in  understanding what is the differences between modular design and linguistic design. 
+
+I thought hard and now think the linguistic approach is thinking about the problem in a higher level than merely at the level of problem solving.
+
+It is giving powerful expressive powers to our language so that we can use our language to describe more things, combining in more different ways, abstract general patterns more freely. It is pure freedom that you will get if you think in the level of implementing languages. 
+
+That's still confusing. Now let's think what we actually do in different cases:
+
+What we actually do when designing a computer system in a modular way?
+1. We *identify tasks* and *categorize* them into existing modules.
+2. If none appropriate module exists, *create a new one*.
+3. We *define a convention for passing things around our module system*.
+4. We implement sub-tasks module by module.
+5. We *test each module*.
+6. We *glue our modules together* and test them.
+
+But what do we do when implementing a problem in terms of a language?
+1. We think of *what are the primitives*.
+2. We explore *ways of combining the primitives, and at the mean time satisfies the closure property*.
+3. We *identify different levels in the language* and *build abstraction barriers to isolate them*.
+4. We look for *general patterns* of doing things and abstract that within a abstraction layer to *get higher-order procedures*.
+
+Now we can notice that the two ways are, greatly, wildly, different.
+
+Yes, dividing a software into modules is a good thing, but it still enforce, to some extent, strict hierarchical orders among those modules. And it is not possible for anyone else to understand it, enrich it with ease without studying hard about what every module actually do and how they work together.
+
+However, the other scheme doesn't have such strict restrictions. As long as you express your thing with the language in a workable way, you can pretty much do whatever you want. You can play with the whole language with all the vocabulary it provides and don't need to know why they work nor how they work, but still being able to do things at any level.
+
+The problem solving mind set is like writing an essay to actually argue about a specific topic. A good modular design only means you structured your essay into paragraphs and they serve very well in convincing others.
+
+The linguistic mind set is more of like providing you with vocabulary (primitives), grammar (means of combination), and ways of forming a good argument (higher-order procedures, or abstraction). Then what you need to do is to supply this language with necessary details.
+
+For me, I see *pure freedom* in the Linguistic setting. It's like LEGO with bricks (primitives), knobs (means of combination), and some abstract blueprints (abstractions). You have complete freedom over it and is able to assemble whatever you have in mind.
+
+While modularity design is like a delicate large toy with different modules (modules that make sounds, modules that controls lights, modules that connect to the remote, and so forth). You can play it but it is hard to take it apart and modify it.

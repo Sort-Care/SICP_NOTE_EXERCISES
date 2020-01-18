@@ -550,3 +550,60 @@ However, if we allow "imaginary intervals", it might be possible (not sure). I w
 #+end_src
 
 For more reasoning of this question, see the prolonged discussion in exercise 2.14.
+** 2.17
+Define a procedure ~last-pair~ that returns the list that contains only the last element of a given (nonempty) list:
+#+begin_src scheme
+(last-pair (list 23 72 149 34))
+(34)
+#+end_src
+
+#+begin_src scheme
+  (define (last-pair items)
+    (if (null? (cdr items))
+        (car items)
+        (last-pair (cdr items))))
+#+end_src
+** 2.18
+Define a procedure ~reverse~ that takes a list as argument and returns a list of the same elements in reverse order:
+#+begin_src scheme
+(reverse (list 1 4 9 16 25))
+;; (25 16 9 4 1)
+#+end_src
+
+#+begin_src scheme
+  ;; question: is recursive process possible here?
+  ;; recursive is in natural building from outside into inside.
+  ;; but here we need to build from inside out.
+  ;; we can access the last element with last-pair easily
+  ;; but I didn't find a very convenient way to peal the last element
+  ;; from the original list so that next call of last-pair will return
+  ;; a different value from a level above.
+  (define (reverse items)
+    (if (null? items)
+        items
+        ())) ;; I don't think it is possible here to do it with a recursive process
+  ;; but how can I prove it mathematically?
+
+  (define (reverse items)
+    (define (reverse n res)
+      (if (= n (length items)) ;; when it ends
+          res
+          (reverse (+ n 1)
+                   (cons (list-ref items n) res))))
+    (reverse 0 '()))
+#+end_src
+** 2.19
+Consider the change-counting program of section 1.2.2. It would be nice to be able to easily change the currency used by the program, so that we could compute the number of ways change a British pound, for example. As the program is written, the knowledge of the currency is distributed partly into the procedure ~first-denomination~ and partly into the procedure ~count-change~ (which knows that there are five kinds of U.S. coins). It would be nicer to be able to supply a list of coins to be used for making change.
+
+We want to rewrite the procedure ~cc~ so that its second argument is a list of the values of the coins to use rather than an integer specifying which coins to use. We could then have lists that defined each kind of currency:
+#+begin_src scheme
+  (define us-coins (list 50 25 10 5 1))
+  (define uk-coins (list 100 50 20 10 5 2 1 0.5))
+#+end_src
+
+We could then call ~cc~ as follows:
+#+begin_src scheme
+(cc 100 us-coins)
+;; 292
+#+end_src
+** 2.20
