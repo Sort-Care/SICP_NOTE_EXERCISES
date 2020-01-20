@@ -975,3 +975,74 @@ Back to the problem, if we change the ~list~ into ~cons~, the only thing we need
   (define second (lambda (x) (cdr x)))
 #+end_src
 Nothing else need to be changed.
+** 2.30
+Define a procedure ~square-tree~ analogous to the ~square-list~ procedure of exercise 2.21. That is, ~square-tree~ should behave as follows:
+#+begin_src scheme
+    (square-tree
+     (list 1
+           (list 2 (list 3 4) 5)
+           (list 6 7)))
+    ;; (1 (4 (9 16) 25) (36 49))
+
+  (define atree (list 1
+                      (list 2 (list 3 4) 5)
+                      (list 6 7)))
+#+end_src
+Define ~square-tree~ both directly (i.e. without using any higher-order procedures) and also by using ~map~ and recursion.
+
+#+begin_src scheme
+  (define (square-tree tree)
+    (cond ((null? tree) '())
+          ((not (pair? tree)) (square tree))
+          (else (cons (square-tree (car tree))
+                      (square-tree (cdr tree))))))
+
+  (define (square-tree tree)
+    (map (lambda (sub-tree)
+           (if (pair? sub-tree)
+               (square-tree sub-tree)
+               (square sub-tree)))
+         tree))
+#+end_src
+*** My note
+Notice the different level of recursion here. ~map~ is a recursive process, but doesn't go further down along the tree, only the first level. That's why we see the ~lambda~ procedure we used when using ~map~ has its own recursive call as well. The ~map~ takes care of handling both children of a sub-tree. And the ~lambda~ takes care of any sub-tree handed to it with another call of ~square-tree~.
+
+In other words, ~map~ ensures we and expanding to and processing both left and right child. ~lambda~ ensures we are diving down any sub-tree that exists.
+** 2.31
+Abstract your answer to exercise 2.30 to produce a procedure ~tree-map~ with the property that ~square-tree~ could be defined as
+#+begin_src scheme
+  (define (square-tree tree) (tree-map square tree))
+#+end_src
+
+#+begin_src scheme
+  (define (tree-map proc tree)
+    (map (lambda (sub-tree)
+           (if (pair? sub-tree)
+               (tree-map proc sub-tree)
+               (proc sub-tree)))
+         tree))
+#+end_src
+** 2.32
+We can represent a set as a list of distinct elements, and we can represent the set of all subsets of the set as a list of lists. For example, if the set is ~(1 2 3)~, then the set of all subsets is ~(() (3) (2) (2 3) (1) (1 3) (1 2) (1 2 3))~. Complete the following definition of a procedure that generates the set of subsets of a set and give a clear explanation of how it works.
+
+Here I closed the book and tried to think of how to implement this from scratch.
+
+What I first thought of is using a binary number and start from 0000, all the way to 1111, using different digit to signal whether we take $i$ th element or not. But obviously that is not what we are talking about right now.
+
+Another recursive solution, when we are considering $i$ the element, whether it is in the subset or not.
+#+begin_src scheme
+  (define (subsets items)
+    (cond ((null? items) (list '()))
+          ((pair? items) (let ((cdr-sub (subsets (cdr items))))
+                           (append cdr-sub
+                                   (append-to-every (list (car items)) cdr-sub))))))
+
+
+  (define (append-to-every lst items)
+    (map (lambda (l)
+           (append lst
+                   l))
+         items))
+#+end_src
+
+This is very close the the answer in the book. The only difference is that I took our the ~map~ aside and put it into the procedure ~append-to-every~.

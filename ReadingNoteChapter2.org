@@ -489,5 +489,66 @@ To aid in writing recursive procedures on trees, Scheme provides the primitive p
           (else (+ (count-leaves (car x))
                    (count-leaves (cdr x))))))
 #+end_src
+**** Mapping over trees
+Just as ~map~ is powerful abstraction for dealing with sequences, ~map~ together with recursion is a powerful abstraction for dealing with trees. For instance, the ~scale-tree~ procedure, analogous to ~scale-list~ of section 2.2.1, takes as arguments a numeric factor and a tree whose leaves are numbers. It returns a tree of the same shape, where each number is multiplied by the factor. The recursive plan for ~scale-tree~ is similar to the one of ~count-leaves~:
+#+begin_src scheme
+  (define (scale-tree tree factor)
+    (cond ((null? tree) '())
+          ((not (pair? tree)) (* tree factor))
+          (else (cons (scale-tree (car tree) factor)
+                      (scale-tree (cdr tree) factor)))))
 
+  (scale-tree (list 1 (list 2 (list 3 4) 5) (list 6 7))
+              10)
+#+end_src
 
+Another way to implement ~scale-tree~ is to regard the tree as a sequence of sub-trees and us ~map~. We map over the sequence, scaling each sub-tree in turn, and return the list of results. In the base case, where the tree is a leaf, we simply multiply by the factor:
+#+begin_src scheme
+  (define (scale-tree tree factor)
+    (map (lambda (sub-tree)
+           (if (pair? sub-tree)
+               (scale-tree sub-tree factor)
+               (* sub-tree factor)))
+         tree))
+#+end_src
+
+Many tree operations can be implemented by similar combinations of sequence operations and recursion.
+*** Sequences as Conventional Interfaces
+In working with compound data, we've stressed how data abstraction permits us to design programs without becoming enmeshed in the details of data representations, and how abstraction preserves for us the flexibility to experiment with alternative representations. In this section, we introduce another powerful design principle for working with data structures--the use of /conventional interfaces/.
+
+In section 1.3 we saw how program abstractions, implemented as higher-order procedures, can capture common patterns in programs that deal with numerical data. Our ability to formulate analogous operations for working with compound data depends crucially on *the style in which we manipulate our data structures*. Consider, for example, the following procedure, analogous to the ~count-leaves~ procedure of section 2.2.2, which takes a tree as argument and computes the sum of the squares of the leaves that are odd:
+#+begin_src scheme
+  (define (sum-odd-squares tree)
+    (cond ((null? tree) 0)
+          ((not (pair? tree))
+           (if (odd? tree) (square tree) 0))
+          (else (+ (sum-odd-squares (car tree))
+                   (sum-odd-squares (cdr tree))))))
+#+end_src
+
+On the surface, this procedure is very different from the following one, which constructs a list of all the even Fibonacci numbers $Fib(k)$, where $k$ is less than or equal to a given integer $n$:
+#+begin_src scheme
+  (define (even-fibs n)
+    (define (next k)
+      (if (> k n)
+          '()
+          (let ((f (fib k)))
+            (if (even? f)
+                (cons f (next (+ k 1)))
+                (next (+ k 1))))))
+    (next 0))
+#+end_src
+
+Despite the fact that these two procedures are structurally very different, a more abstract description of the two computations reveals a great deal of similarity.
+
+The first program
+1. enumerates the leaves of a tree;
+2. filters them, selecting the odd ones;
+3. squares each of the selected ones; and
+4. accumulates the results using ~+~, starting with 0.
+
+The second program
+1. enumerates the integers from 0 to $n$;
+2. computes the Fibonacci number for each integer;
+3. filters them, selecting the even ones; and
+4. accumulates the results using ~cons~, starting with the empty list.
