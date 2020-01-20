@@ -1,3 +1,4 @@
+#+BIND: geiser-scheme-implementation mit
 #+STARTUP: nolatexpreview
 * Chapter 2 Exercises
 ** 2.1
@@ -571,26 +572,33 @@ Define a procedure ~reverse~ that takes a list as argument and returns a list of
 #+end_src
 
 #+begin_src scheme
-  ;; question: is recursive process possible here?
-  ;; recursive is in natural building from outside into inside.
-  ;; but here we need to build from inside out.
-  ;; we can access the last element with last-pair easily
-  ;; but I didn't find a very convenient way to peal the last element
-  ;; from the original list so that next call of last-pair will return
-  ;; a different value from a level above.
-  (define (reverse items)
+    ;; question: is recursive process possible here?
+    ;; recursive is in natural building from outside into inside.
+    ;; but here we need to build from inside out.
+    ;; we can access the last element with last-pair easily
+    ;; but I didn't find a very convenient way to peal the last element
+    ;; from the original list so that next call of last-pair will return
+    ;; a different value from a level above.
+    (define (reverse items)
+      (if (null? items)
+          items
+          (tail-append (reverse (cdr items))
+                       (car items)))) ;; I don't think it is possible here to do it with a recursive process
+  ;; We actually can.
+  ;; Wishful thinking again, assume we have a procedure tail-add
+  (define (tail-append items x)
     (if (null? items)
-        items
-        ())) ;; I don't think it is possible here to do it with a recursive process
-  ;; but how can I prove it mathematically?
+        (cons x '())
+        (cons (car items)
+              (tail-append (cdr items) x))))
 
-  (define (reverse items)
-    (define (reverse n res)
-      (if (= n (length items)) ;; when it ends
-          res
-          (reverse (+ n 1)
-                   (cons (list-ref items n) res))))
-    (reverse 0 '()))
+    (define (reverse items)
+      (define (reverse n res)
+        (if (= n (length items)) ;; when it ends
+            res
+            (reverse (+ n 1)
+                     (cons (list-ref items n) res))))
+      (reverse 0 '()))
 #+end_src
 ** 2.19
 Consider the change-counting program of section 1.2.2. It would be nice to be able to easily change the currency used by the program, so that we could compute the number of ways change a British pound, for example. As the program is written, the knowledge of the currency is distributed partly into the procedure ~first-denomination~ and partly into the procedure ~count-change~ (which knows that there are five kinds of U.S. coins). It would be nicer to be able to supply a list of coins to be used for making change.
@@ -769,18 +777,201 @@ Suppose we evaluate the expression ~(list 1 (list 2 (list 3 4)))~. Give the resu
 Interpreter output: ~(1 (2 (3 4)))~.
 
 Tree:
-#+begin_src ditaa :file images/2.24tree.png
-          root
-         /    \
-        1   (2 (3 4))
-            /       \
-           2       (3 4)
-                   /   \
-                  3     4
+#+name: 2.24-list-tree
+#+header: :results value file
+#+header: :file images/2.24-tree.png 
+#+header: :imagemagick yes :headers '("\\usepackage{tikz}") 
+#+header: :fit yes :iminoptions -density 600 :imoutoptions -geometry 400
+#+begin_src latex :file ./images/2.24-tree.png
+  \begin{tikzpicture}
+    \node {root}
+      child {node {1}}
+      child {node {(2 (3 4))}
+        child {node {2}}
+        child {node {(3 4)}
+          child {node {3}}
+          child {node {4}}
+        }
+      };
+  \end{tikzpicture}
 #+end_src
 
+[[file:images/2.24-tree.png]]
+
 ** 2.25
+Give combinations of ~car~ and ~cdr~ that will pick 7 from each of the following lists:
+#+begin_src scheme
+(1 3 (5 7) 9)
+((7))
+(1 (2 (3 (4 (5 (6 7))))))
+#+end_src
+
+#+begin_src scheme
+  (define l1 (list 1 3 (list 5 7) 9))
+  (car (cdr (car (cdr (cdr l1)))))
+
+  (define l2 (list (list 7)))
+  (car (car l2))
+
+  (define l3 (list 1 (list 2 (list 3 (list 4 (list 5 (list 6 7)))))))
+  (car (cdr (car (cdr (car (cdr (car (cdr (car (cdr (car (cdr l3))))))))))))
+  ;; each (car (cdr)) pair gets the inner list
+#+end_src
 ** 2.26
+Suppose we define ~x~ and ~y~ to be two lists:
+#+begin_src scheme
+  (define x (list 1 2 3))
+  (define y (list 4 5 6))
+#+end_src
+What is printed by the interpreter in response to evaluating each of the following expressions:
+#+begin_src scheme
+  (append x y)
+  (cons x y)
+  (list x y)
+#+end_src
+
+#+begin_src scheme
+  (1 2 3 4 5 6)
+  ((1 2 3) . (4 5 6)) ;; wrong
+  ;; right answer
+  ((1 2 3) 4 5 6)
+  ((1 2 3) (4 5 6))
+#+end_src
 ** 2.27
+Modify your ~reverse~ procedure of exercise 2.18 to produce a ~deep-reverse~ procedure that takes a list as argument and returns as its value the list with its elements reversed and with all sublists deep-reversed as well. For example,
+#+begin_src scheme
+  (define x (list (list 1 2) (list 3 4)))
+
+  x ;; ((1 2) (3 4))
+  (reverse x)
+  ;; ((3 4) (1 2))
+  (deep-reverse x)
+  ;; ((4 3) (2 1))
+#+end_src
+
+#+begin_src scheme
+;; iterative process procedure
+  (define (deep-reverse items)
+    (define (deep-reverse-iter n res)
+      (if (= n (length items))
+          res
+          (deep-reverse-iter (+ n 1)
+                             (cons (deep-reverse (list-ref items n)) ;; recursive call
+                                   res))))
+    (if (list? items) ;; if it is a list
+        (deep-reverse-iter 0 '()) ;; reverse it
+        items)) ;; otherwise, just return it.
+
+  ;; or recursive process procedure
+  (define (deep-reverse items)
+    (cond ((null? items) items)
+          ((list? items) (tail-append (deep-reverse (cdr items))
+                                      (deep-reverse (car items))))
+          (else items))) ;; I don't think it is possible here to do it with a recursive process
+  ;; We actually can.
+  ;; Wishful thinking again, assume we have a procedure tail-add
+  (define (tail-append items x)
+    (if (null? items)
+        (cons x '())
+        (cons (car items)
+              (tail-append (cdr items) x))))
+#+end_src
 ** 2.28
+Write a procedure ~fringe~ that takes as argument a tree (represented as a list) and returns a list whose elements are all the leaves of the tree arranged in left-to-right order. For example,
+#+begin_src scheme
+  (define x (list 1 2) (list 3 4))
+
+  (fringe x) ;; (1 2 3 4)
+  (fringe (list x x)) ;; (1 2 3 4 1 2 3 4)
+#+end_src
+
+#+begin_src scheme
+  (define (fringe items)
+    (cond ((null? items) '())
+          ((not (pair? items)) (list items))
+          (else (append (fringe (car items))
+                        (fringe (cdr items))))))
+#+end_src
 ** 2.29
+A binary mobile consists of two branches, a left branch and a right branch. Each branch is a rod of a certain length, from which hangs either a weight or another binary mobile. We can represent a binary mobile using compound data by constructing it from two branches (for example, using ~list~):
+#+begin_src scheme
+  (define (make-mobile left right)
+    (list left right))
+#+end_src
+
+A branch is constructed from a ~length~ (which must be a number) together with a ~structure~, which may be either a number (representing a simple weight) or another mobile:
+#+begin_src scheme
+  (define (make-branch length structure)
+    (list length structure))
+#+end_src
+
+- a. Write the corresponding selectors ~left-branch~ and ~right-branch~, which return the branches of a mobile, and ~branch-length~ and ~branch-structure~, which return the components of a branch.
+#+begin_src scheme
+  (define first (lambda (l) (list-ref l 0)))
+  (define second (lambda (l) (list-ref l 1)))
+  (define left-branch first)
+  (define right-branch second)
+
+  (define branch-length first)
+  (define branch-structure second)
+#+end_src
+- b. Using your selectors, define a procedure ~total-weight~ that returns the total weight of a mobile.
+#+begin_src scheme
+  (define (total-weight mobile)
+    (cond ((not (number? mobile))
+           (let ((left-s (branch-structure (left-branch mobile)))
+                 (right-s (branch-structure (right-branch mobile))))
+             (+ (total-weight left-s)
+                (total-weight right-s))))
+          (else mobile))) ;; not list, return the number
+
+  (define lfb (make-branch 0.3 10))
+  (define rtb (make-branch 0.4 8))
+  (define mob (make-mobile lfb rtb))
+  (total-weight mob) ;; 18
+
+  (define rtb2 (make-branch 0.4 mob))
+  (define mob2 (make-mobile lfb rtb2))
+  (total-weight mob2) ;; 10 + 18 = 28
+#+end_src
+- c. A mobile is said to be /balanced/ if the torque applied by its top-left branch is equal to that applied by its top-right branch (that is, if the length of the left rod multiplied by the weight hanging from that rod is equal to the corresponding product for the right side) and it each of the sub-mobiles hanging off branches is balanced. Design a predicate that tests whether a binary mobile is balanced.
+#+begin_src scheme
+  (define (balanced? mobile)
+    (cond ((number? mobile) true) ;; if it is a number
+          (else (and (= (* (total-weight (branch-structure (left-branch mobile)))
+                           (branch-length (left-branch mobile)))
+                        (* (total-weight (branch-structure (right-branch mobile)))
+                           (branch-length (right-branch mobile)))) ;; the top level is balanced
+                     (balanced? (branch-structure (left-branch mobile)))
+                     (balanced? (branch-structure (right-branch mobile))))))) ;; all sub-mobiles are balanced
+
+
+  (define lfb (make-branch 3 4))
+  (define rtb (make-branch 2 6))
+  (define mob (make-mobile lfb rtb))
+  (balanced? mob)
+
+  (define lb2 (make-branch 0.2 3))
+  (define rb2 (make-branch 0.2 3))
+  (define submob (make-mobile lb2 rb2))
+  (define rtb-new (make-branch 2 submob))
+  (define mob2 (make-mobile lfb rtb-new))
+  (balanced? mob2)
+#+end_src
+- d. Suppose we change the representation of mobiles so that the constructors are
+#+begin_src scheme
+  (define (make-mobile left right)
+    (cons left right))
+  (define (make-branch length structure)
+    (cons length structure))
+#+end_src
+How much do you need to change your programs to convert to the new representation?
+
+I was using the ~list?~ testing before, than I found that is actually dependent on the underlying implementation of a lower level so that was not quite right. So I changed it into ~(not (number? x))~ test because this only requires knowledge of the mobile data structure but not the actual implementation.
+
+Back to the problem, if we change the ~list~ into ~cons~, the only thing we need to change is ~first~ and ~second~ procedures:
+#+begin_src scheme
+  (define first (lambda (x) (car x)))
+  (define second (lambda (x) (cdr x)))
+#+end_src
+Nothing else need to be changed.
