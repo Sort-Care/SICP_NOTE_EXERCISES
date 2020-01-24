@@ -1046,3 +1046,169 @@ Another recursive solution, when we are considering $i$ the element, whether it 
 #+end_src
 
 This is very close the the answer in the book. The only difference is that I took our the ~map~ aside and put it into the procedure ~append-to-every~.
+** 2.33
+Fill in the missing expressions to complete the following definitions of some basic list-manipulation operations as accumulations:
+#+begin_src scheme
+  (define (map p sequence)
+    (accumulate (lambda (x y)
+                  (cons (p x)
+                        y))
+                '()
+                sequence))
+
+  (define (append seq1 seq2)
+    (accumulate cons seq2 seq1))
+
+  (define (length sequence)
+    (accumulate (lambda (x y)
+                  (1+ y))
+                0
+                sequence))
+#+end_src
+** 2.34
+Evaluating a polynomial in $x$ at a given value of $x$ can be formulated as an accumulation. We evaluate the polynomial
+$$
+a_n x^n + a_{n-1} x^{n-1} + \cdots + a_1 x + a_0
+$$
+using a well-known algorithm called /Horner's rule/, which structures the computation as
+$$
+(\cdots (a_n x + a_{n-1})x + \cdots + a_1)x + a_0
+$$
+In other words, we start with $a_n$, multiply by $x$, add $a_{n-1}$, multiply by $x$, and so on, until we reach $a_0$. Fill in the following template to produce a procedure that evaluates a polynomial using Horner's rule. Assume that the coefficients of the polynomial are arranged in a sequence, from $a_0$ through $a_n$.
+#+begin_src scheme
+  (define (horner-eval x coefficient-sequence)
+    (accumulate (lambda (this-coeff higher-terms)
+                  (+ this-coeff
+                     (* x higher-terms)))
+                0
+                coefficient-sequence))
+#+end_src
+
+*** Note
+Horner's rule evaluates the polynomial using fewer additions and multiplications than does the straightforward method of first computing $a_n x^n$, then adding $a_{n-1} x^{n-1}$, and so on. In fact, it is possible to prove that any algorithm for evaluating arbitrary polynomials must use at least as many additions and multiplications as does Horner's rule, and thus *Horner's rule is an optimal algorithm for polynomial evaluation*.
+** 2.35
+Refine ~count-leaves~ from section 2.2.2 as an accumulation:
+#+begin_src scheme
+  (define (count-leaves t)
+    (accumulate +
+                0
+                (map (lambda (x) ;; for each tree leaves, generate an 1.
+                       1)
+                     (enumerate-tree t))))
+#+end_src
+** 2.36
+The procedure ~accumulate-n~ is similar to ~accumulate~ except that it takes as its third argument a sequence of sequences, which are all assumed to have the same number of elements. It applies the designated accumulation procedure to combine all the first elements of the sequences, all the second elements of the sequences, and so on, and returns a sequence of the results.
+
+For instance, if ~s~ is a sequence containing four sequences, ~((1 2 3) (4 5 6) (7 8 9) (10 11 12))~, then the value of ~(accumulate-n + 0 s)~ should be the sequence ~(22 26 30)~. Fill in the missing expressions in the following definition of ~accumulate-n~:
+
+Also, I closed the book and try to come up with a complete solution.
+
+#+begin_src scheme
+  (define (accumulate-n op initial seqs)
+    (if (null? (cdr seqs))
+        '()
+        (op-two-lists op
+                      initial
+                      (car seqs)
+                      (accumulate-n op initial (cdr seqs)))))
+
+  (define (op-two-lists op initial seq1 seq2)
+    (cond ((and (null? seq1) (null? seq2)) '())
+          ((null? seq1) (map (lambda (x) (op initial x)) seq2))
+          ((null? seq2) (map (lambda (x) (op initial x)) seq1))
+          (else (cons (op (car seq1) (car seq2))
+                      (op-two-lists op initial (cdr seq1) (cdr seq2))))))
+#+end_src
+This works but I was still not capturing the style of processing because I still resort to a lot of condition branches.
+
+#+begin_src scheme
+  (define (accumulate-n op init seqs)
+    (if (null? (car seqs))
+        '()
+        (cons (accumulate op init (map car seqs)) ;; all of the firs elements
+              (accumulate-n op init (map cdr seqs))))) ;; all of the rest
+#+end_src
+** 2.37
+Suppose we represent vectors $v=(v_i)$ as sequences of numbers, and matrices $m=(m_{ij})$ as sequences of vectors (the rows of the matrix). For example, the matrix
+$$
+\begin{bmatrix}
+1 &2 &3 &4 \\
+4 &5 &6 &6 \\
+6 &7 &8 &9
+\end{bmatrix}
+$$
+is represented as the sequence ~((1 2 3 4) (4 5 6 6) (6 7 8 9))~. With this representation, we can use sequence operations to concisely express the basic matrix and vector operations. These operations (which are described in any book on matrix algebra) are the following:
+- ~(dot-product v w)~: returns the sum $\sum_i v_i w_i$;
+- ~(matrix-*-vector m v)~: returns the vector $t$, where $t_i = \sum_j m_{ij} v_j$
+- ~(matrix-*-matrix m n)~: returns the matrix $p$, where $p_{ij} = \sum_k m_{ik} n_{kj}$;
+- ~(transpose m)~: returns the matrix $n$, where $n_{ij} = m_{ji}$
+
+We can define the dot product as
+#+begin_src scheme
+  (define (dot-product v w)
+    (accumulate + 0 (map * v w)))
+#+end_src
+
+Fill in the missing expressions in the following procedures for computing the other matrix operations. (The procedure ~accumulate-n~ is defined in exercise 2.36.)
+#+begin_src scheme
+  (define (matrix-*-vector m v)
+    (map (lambda (w)
+           (dot-product v w))
+         m))
+
+  (define (transpose mat)
+    (accumulate-n cons   ;; operation
+                  '()    ;; initial value
+                  mat))
+
+  (define (matrix-*-matrix m n)
+    (let ((cols (transpose n)))
+      (map (lambda (v)
+             (matrix-*-vector cols
+                              v))
+           m)))
+#+end_src
+** 2.38
+The ~accumulate~ procedure is also known as ~fold-right~, because it combines the first element of the sequence with the result of combining all the elements to the right. There is also a ~fold-left~, which is similar to ~fold-right~, except that it combines elements working in the opposite direction:
+#+begin_src scheme
+  (define (fold-left op initial sequence)
+    (define (iter result rest)
+      (if (null? rest)
+          result
+          (iter (op result (car rest))
+                (cdr rest))))
+    (iter initial sequence))
+#+end_src
+
+Give a property that ~op~ should satisfy to guarantee that ~fold-right~ and ~fold-left~ will produce the same values for any sequence.
+
+Let's see what will be produced by both procedures. Say $\circ$ represents the operation, $e_i$ represents element $i$ in the sequence, $init$ represents the initial value:
+
+For ~fold-right~:
+$$
+(e_1 \circ (e_2 \circ (e_3 \circ ( \cdots (e_n \circ init) \cdots ))))
+$$
+
+While for ~fold-left~:
+$$
+( \cdots (((init \circ e_1) \circ e_2) \circ e_3) \cdots \circ e_n)
+$$
+
+To make the two formula equivalent, ~op~ should be both associative and commutative.
+** 2.39
+Complete the following definitions of ~reverse~ (exercise 2.18) in terms of ~fold-right~ and ~fold-left~ from exercise 2.38:
+
+#+begin_src scheme
+  (define (reverse sequence)
+    (fold-right (lambda (x y)
+                  (append y
+                          (list x)))
+                '()
+                sequence))
+
+  (define (reverse sequence)
+    (fold-left (lambda (x y)
+                 (cons y x))
+               '()
+               sequence))
+#+end_src
