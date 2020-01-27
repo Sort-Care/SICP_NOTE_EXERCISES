@@ -1212,3 +1212,136 @@ Complete the following definitions of ~reverse~ (exercise 2.18) in terms of ~fol
                '()
                sequence))
 #+end_src
+** 2.40
+Define a procedure ~unique-pairs~ that, given an integer $n$, generates the sequence of pairs $(i, j)$ with $1 \leq j < i \leq n$. Use ~unique-pairs~ to simplify the definition of ~prime-sum-pairs~ given before.
+
+#+begin_src scheme
+  (define (unique-pairs n)
+    (flatmap (lambda (i)
+               (map (lambda (j) (list i j))
+                    (enumerate-interval 1 (- i 1))))
+             (enumerate-interval 1 n)))
+
+  (define (prime-sum-pairs n)
+    (map make-pair-sum
+         (filter prime-sum?
+                 (unique-pairs n))))
+#+end_src
+** 2.41
+Write a procedure to find all ordered triples of distinct positive integers $i$, $j$, and $k$ less than or equal to a given integer $n$ that sum to a given integer $s$.
+#+begin_src scheme
+  (define (three-sum-s n s)
+    (define (sum-to-s? triples)
+      (= (accumulate + 0 triples) s))
+    (filter sum-to-s?
+            (unique-triples n)))
+
+  (define (unique-triples n)
+    (accumulate append
+                '()
+                (map (lambda (i)
+                       (accumulate append
+                                   '()
+                                   (map (lambda (j)
+                                          (map (lambda (k)
+                                                 (list i j k))
+                                               (enumerate-interval 1 (- j 1))))
+                                        (enumerate-interval 2 (- i 1)))))
+                     (enumerate-interval 3 n))))
+
+  (define (unique-triples n)
+    (flatmap (lambda (i)
+               (flatmap (lambda (j)
+                          (map (lambda (k) (list i j k))
+                               (enumerate-interval 1 (- j 1))))
+                        (enumerate-interval 2 (- i 1))))
+             (enumerate-interval 3 n)))
+
+  (define (nested-loop k n)
+    "K level nested loop that generates unique lists in all elements are not bigger than n"
+    ())
+
+  ;; (+ i j k) == s
+  ;; distinct
+  ;;
+#+end_src
+** 2.42
+The "eight-queens puzzle" asks how to place eight queens on a chessboard so that no queen is in check from any other (i.e., no two queens are in the same row, column, or diagonal). One way to solve the puzzle is to work across the board, placing a queen in each column. Once we have placed $k-1$ queens, we must place the $k$-th queen in a position where it does not check any of the queens already on the board. We can formulate this approach recursively: Assume that we have already generated the sequence of all possible ways to place $k-1$ queens in the first $k-1$ columns of the board. For each of these ways, generate an extended set of positions by placing a queen in each row of the $k$ th column. Now filter these, keeping only the positions for which the queen in the $k$ th column is safe with respect to other queens. This produces the sequences of all ways to place $k$ queens in the first $k$ columns. By continuing this process, we will produce not only one solution, but all solutions to the puzzle.
+
+We implement this solution as a procedure ~queens~, which returns a sequence of all solutions to the problem of placing $n$ queens on an $n\times n$ chessboard. ~Queens~ has an interval procedure ~queen-cols~ that returns the sequence of all ways to place queens in the first $k$ columns of the board.
+#+begin_src scheme
+  (define (queens board-size)
+    (define (queen-cols k)
+      (if (= k 0)
+          (list empty-board)
+          (filter
+           (lambda (positions) (safe? k positions))
+           (flatmap
+            (lambda (rest-of-queens)
+              (map (lambda (new-row)
+                     (adjoin-position new-row k rest-of-queens))
+                   (enumerate-interval 1 board-size)))
+            (queen-cols (- k 1))))))
+    (queen-cols board-size))
+#+end_src
+
+In this procedure ~rest-of-queens~ is a way to place $k-1$ queens in the first $k-1$ columns, 
+and ~new-row~ is a proposed row in which to place the queen for the $k$ th column. Complete the program by implementing the representation for sets of board positions, including the procedure ~adjoin-position~, which adjoins a new row-column position to a set of positions, and ~empty-board~, which represents an empty set of positions. You must also write the procedure ~safe?~, which determines for a set of positions, whether the queen in the $k$ th column is safe with respect to the others. (Note that we need only check whether the new queen is safe--the other queens are already guaranteed safe with respect to each other.)
+
+#+begin_src scheme
+  ;; representation for sets of board positions
+  ;; adjoin-position
+  ;; empty-board
+  ;; safe?
+
+  ;; queen-cols returns a list of lists of lists: ((one way) (another way) ((0,x) ...))
+  ;; '()
+
+  (define empty-board '())
+
+  ;; ((col, row), (row, col), ...)
+  ;; e.g. ((0, 0), (1, 2), ...)
+  (define (adjoin-position new-row k rest-of-queens)
+    (append rest-of-queens
+            (list (cons k
+                        new-row))))
+
+  ;; the last pair represents the new queen
+  ;; we only need to check if the new queen is safe
+  ;;
+  (define (safe? k positions) ;; I didn't actually use the k here. But that doesn't matter
+    (cond ((= (length positions) 1) true) ;; only one queen on the board
+          (else (test-queens (new-queen positions)
+                             (old-queens positions)))))
+
+  (define (new-queen positions) ;; I assume that the last one in the positions is the new one
+    (first (reverse positions)))
+
+  (define (old-queens positions) ;; all others are old ones
+    (reverse (cdr (reverse positions))))
+
+  (define (test-queens new-queen old-queens) ;; test the new one against all old ones
+    (accumulate (lambda (x y) (and x y))
+                true
+                (map (lambda (queen-pos)
+                       (and (not (= (cdr queen-pos)
+                                    (cdr new-queen))) ;; not same row
+                            (not (= (abs (- (car queen-pos) (car new-queen)))
+                                    (abs (- (cdr queen-pos) (cdr new-queen))))))) ;; not diagonal
+                     old-queens)))
+#+end_src
+** 2.43
+Louis Reasoner is having a terrible time doing exercise 2.42. His ~queens~ procedure seems to work, but it runs extremely slowly. (Louis never does manage to wait long enough for it to solve even the $6 \times 6$ case.) When Louis ask Eva Lu Ator for help, she points out that he has interchanged the order of the nested mappings in the ~flatmap~, writing it as
+#+begin_src scheme
+  (flatmap
+   (lambda (new-row)
+     (map (lambda (rest-of-queens)
+            (adjoin-position new-row k rest-of-queens))
+          (queen-cols (- k 1))))
+   (enumerate-interval 1 board-size))
+#+end_src
+Explain why this interchange makes the program run slowly. Estimate how long it will take Louis's program to solve the eight-queens puzzle, assuming that the program in exercise 2.42 solves the puzzle in time $T$.
+
+The reason it runs slowly is that, for each possible ~new-row~, the procedure ~queen-cols~ is run redundantly. Thus he is making the procedure a tree recursive process instead of a linear one.
+
+The branching factor is the size of the chessboard. In eight queen puzzle, a program running in time $T$ will cost time $8^8 T$ time to run.
