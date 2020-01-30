@@ -764,3 +764,111 @@ Notice how this strategy reduces the problem of generating permutations of $S$ t
     (filter (lambda (x) (not (= x item)))
             sequence))
 #+end_src
+*** Example: A Picture Language
+This section presents a simple language for drawing pictures that illustrates the power of data abstraction and closure, and also exploits higher-order procedures in an essential way. The language is designed to make it easy to experiment with patterns. In this language, the data objects being combined are represented as procedures rather than as list structure. Just as ~cons~, which satisfies the closure property, allowed us to easily build arbitrarily complicated list structure, the operations in this language, which also satisfy the closure property, allow us to easily build arbitrary complicated patterns.
+**** The Picture Language
+When we began our study of programming in section 1.1, we emphasized the importance of describing a language by focusing on the language's primitives, its means of combination, and its means of abstraction. We'll follow that framework here.
+
+Part of the elegance of this picture language is that there is only one kind of element, called a /painter/. A painter draws an image that is shifted and scaled to fit within a designated parallelogram-shaped frame. The actual shape of the drawing depends on the frame.
+
+#+begin_center
+The world-enforced distinction between the practical and scientific worker is utterly futile, and the whole experience of modern times has demonstrated its utter worthlessness. -- Rogers
+#+end_center
+
+To combine images, we use various operations that construct new painters from given painters. For example, the ~beside~ operation takes two painters and produces a new, compound painter that draws the first painter's image in the left half of the frame and the second painter's image in the right half of the frame. Similarly, ~below~ takes two painters and produces a compound painter that draws the first painter's image below the second painter's image. Some operations transform a single painter to produce a new painter. For example, ~flip-vert~ takes a painter and produces a painter that draws its image upside-down, and ~flip-horiz~ produces a painter that draws the original painter's image left-to-right reversed.
+
+In building up a complex image in this manner we are exploiting the fact that painters are closed under the language's means of combination. The ~beside~ or ~below~ of two painters is itself a painter; therefore, we can use it as an element in making more complex painters. As with building up list structure using ~cons~, the closure of our data under the means of combination is crucial to the ability to create complex structures while using only a few operations.
+
+In building up a complex image in this manner we are exploiting the fact that painters are closed under the language's means of combination. The ~beside~ or ~below~ of two painters is itself a painter; therefore, we can use it as an element in making more complex painters. As with building up list structure using ~cons~, *the closure of our data under the means of combination is crucial to the ability to create complex structures while using only a few operations*.
+
+Once we can combine painters, we would like to be able to abstract typical patterns of combining painters. We will implement the painter operations as Scheme procedures. This means that we don't need a special abstraction mechanism in the picture language: Since the means of combination are ordinary Scheme procedures, we automatically have the capability to do anything with painter operations that we can do with procedures. For example, we can abstract the pattern in ~wave4~ as
+#+begin_src scheme
+  (define (flipped-pairs painter)
+    (let ((painter2 (beside painter (flip-vert painter))))
+      (below painter2 painter2)))
+#+end_src
+
+and define ~wave4~ as an instance of this pattern:
+#+begin_src scheme
+  (define wave4 (flipped-pairs wave))
+#+end_src
+
+We can also define recursive operations. Here's one that makes painters split and branch towards the right:
+#+begin_src scheme
+  (define (right-split painter n)
+    (if (= n 0)
+        painter
+        (let ((smaller (right-split painter (- n 1))))
+          (beside painter (below smaller smaller)))))
+#+end_src
+
+We can produce balanced patterns by branching upwards as well as towards the right:
+#+begin_src scheme
+  (define (corner-split painter n)
+    (if (= n 0)
+        painter
+        (let ((up (up-split painter (- n 1)))
+              (right (right-split painter (- n 1))))
+          (let ((top-left (beside up up))
+                (bottom-right (below right right))
+                (corner (corner-split painter (- n 1))))
+            (beside (below painter top-left)
+                    (below bottom-right corner))))))
+#+end_src
+
+By placing four copies of a ~corner-split~ appropriately, we obtain a pattern called ~square-limit~:
+#+begin_src scheme
+  (define (square-limit painter n)
+    (let ((quarter (corner-split painter n)))
+      (let ((half (beside (flip-horiz quarter) quarter)))
+        (below (flip-vert half) half))))
+#+end_src
+**** Higher-order operations
+In addition to abstracting patterns of combining painters, we can work at a higher level, abstracting patterns of combining painter operations as elements to manipulate and can write means of combination for these elements--procedures that take painter operations as arguments and create new painter operations.
+
+For example, ~flipped-pairs~ and ~square-limit~ each arrange four copies of a painter's image in a square pattern; they differ only in how they orient the copies. One way to abstract this pattern of painter combination is with the following procedure, which takes four one-argument painter operations and produces a painter operation that transforms a given painter with those four operations and arranges the results in a square. ~tl~, ~tr~, and ~br~ are the transformations to apply to the top left copy, the top right copy, the bottom left copy, and the bottom right copy, respectively.
+#+begin_src scheme
+  (define (square-of-four tl tr bl br)
+    (lambda (painter)
+      (let ((top (beside (tl painter) (tr painter)))
+            (bottom (beside (bl painter) (br painter))))
+        (below bottom top))))
+#+end_src
+
+The ~flipped-pairs~ can be defined in terms of ~square-of-four~ as follows:
+#+begin_src scheme
+  (define (flipped-pairs painter)
+    (let ((combine4 (square-of-four identity flip-vert
+                                    identity flip-vert)))
+      (combine4 painter)))
+#+end_src
+
+And ~square-limit~ can be expressed as
+#+begin_src scheme
+  (define (square-limit painter n)
+    (let ((combine4 (square-of-four flip-horiz identity
+                                    rotate180 flip-vert)))
+      (combine4 (coner-split painter n))))
+#+end_src
+**** Frames
+Before we can show how to implement painters and their means of combination, we must first consider frames. A frame can be described by three vectors--an origin vector and two edge vectors. The origin vector specifies the offset of the frame's origin from some absolute origin in the plane, and the edge vectors specify the offsets of the frame's corners from its origin. If the edges are perpendicular, the frame will be rectangular. Otherwise the frame will be a more general parallelogram.
+
+In accordance with data abstraction, we need not be specific yet about how frames are represented, other than to say there is a constructor ~make-frame~, which takes three vectors and produces a frame, and three corresponding selectors ~origin-frame~, ~edge1-frame~, ~edge2-frame~.
+
+We will use coordinates in the unit square ~(0 \leq x, y \leq 1)~ to specify images. With each frame, we associate a frame /coordinate map/, which will be used to shift and scale images to fit frame. The map transforms the unit square into the frame by mapping the vector $\mathbf{v} = (x, y)$ to the vector sum
+$$
+\text{Origin}(\text{Frame}) + x \cdot \text{Edge}_1(\text{Frame}) + y \cdot \text{Edge}_2 (\text{Frame})
+$$
+For example, $(0,0)$ is mapped to the origin of the frame, $(1, 1)$ to the vertex diagonally opposite the origin, and $(0.5 , 0.5)$ to the center of the frame. We can create a frame's coordinate map with the following procedure:
+#+begin_src scheme
+  (define (frame-coord-map frame)
+    (lambda (v)
+      (add-vect
+       (origin-frame frame)
+       (add-vect (scale-vect (xcor-vect v)
+                             (edge1-frame frame))
+                 (scale-vect (ycor-vect v)
+                             (edge2-frame frame))))))
+#+end_src
+
+Observe that applying ~frame-coord-map~ to a frame returns a procedure that, given a vector, returns a vector. If the argument vector is in the unit square, the result vector will be in the frame.

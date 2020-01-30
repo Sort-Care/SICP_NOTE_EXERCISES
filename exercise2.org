@@ -1345,3 +1345,27 @@ Explain why this interchange makes the program run slowly. Estimate how long it 
 The reason it runs slowly is that, for each possible ~new-row~, the procedure ~queen-cols~ is run redundantly. Thus he is making the procedure a tree recursive process instead of a linear one.
 
 The branching factor is the size of the chessboard. In eight queen puzzle, a program running in time $T$ will cost time $8^8 T$ time to run.
+** 2.44
+Define the procedure ~up-split~ used by ~corner-split~. It is similar to ~right-split~, except that it switches the roles of ~below~ and ~beside~.
+#+begin_src scheme
+  (define (up-split painter n)
+    (if (= n 0)
+        painter
+        (let ((smaller (up-split painter (- n 1))))
+          (below painter (beside smaller smaller)))))
+#+end_src
+** 2.45
+~right-split~ and ~up-split~ can be expressed as instances of a general splitting operation. Define a procedure ~split~ with the property that evaluating
+#+begin_src scheme
+(define right-split (split beside below))
+(define up-split (split below beside))
+#+end_src
+produces procedures ~right-split~ and ~up-split~ with the same behaviors as the ones already defined.
+#+begin_src scheme
+  (define (split op1 op2)
+    (lambda (painter n)
+      (if (= n 0)
+          painter
+          (let ((smaller ((split op1 op2) painter (- n 1))))
+            (op1 painter (op2 smaller smaller))))))
+#+end_src
