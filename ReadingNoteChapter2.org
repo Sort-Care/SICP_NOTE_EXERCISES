@@ -872,3 +872,10 @@ For example, $(0,0)$ is mapped to the origin of the frame, $(1, 1)$ to the verte
 #+end_src
 
 Observe that applying ~frame-coord-map~ to a frame returns a procedure that, given a vector, returns a vector. If the argument vector is in the unit square, the result vector will be in the frame.
+
+For example,
+#+begin_src scheme
+  ((frame-coord-map a-frame) (make-vect 0 0))
+  ;; returns the same vector as
+  (origin-frame a-frame)
+#+end_src

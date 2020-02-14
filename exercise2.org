@@ -1369,3 +1369,75 @@ produces procedures ~right-split~ and ~up-split~ with the same behaviors as the 
           (let ((smaller ((split op1 op2) painter (- n 1))))
             (op1 painter (op2 smaller smaller))))))
 #+end_src
+** 2.46
+A two-dimensional vector $\mathbf{v}$ running from the origin to a point can be represented as a pair consisting of an $x$-coordinate and a $y$-coordinate. Implement a data abstraction for vectors by giving a constructor ~make-vector~ and corresponding selectors ~xcor-vect~ and ~ycor-vect~. In terms of your selectors and constructor, implement the procedures ~add-vect~, ~sub-vect~, and ~scale-vect~ that perform the operations vector addition, vector subtraction, and multiplying a vector by a scalar:
+$$
+\begin{align*}
+(x_1, y_1) + (x_2, y_2) &= (x_1 + x_2, y_1 + y_2) \\
+(x_1, y_1) - (x_2, y_2) &= (x_1 - x_2, y_1 - y_2) \\
+s \cdot (x, y) &= (sx, sy)
+\end{align*}
+$$
+
+#+begin_src scheme
+  (define make-vector cons)
+  (define xcor-vector car)
+  (define ycor-vector cdr)
+
+  ;; operator abstractions
+  ;; binary operator
+  (define (binary-op-vector vec1 vec2 op)
+    (make-vector (op (xcor-vector vec1)
+                     (xcor-vector vec2))
+                 (op (ycor-vector vec1)
+                     (ycor-vector vec2))))
+
+  ;; unary operator
+  (define (unary-op-vector vec op)
+    (make-vector (op (xcor-vector vec))
+                 (op (ycor-vector vec))))
+  ;; addition
+  (define (add-vect vec1 vec2)
+    (binary-op-vector vec1 vec2 +))
+  ;; subtraction
+  (define (sub-vect vec1 vec2)
+    (binary-op-vector vec1 vec2 -))
+  ;; scale
+  (define (scale-vect vec s)
+    (define scale-by-s
+      (lambda (num)
+        (* num s)))
+    (unary-op-vector vec scale-by-s))
+
+#+end_src
+
+I wrote this exercise with operator abstractions. It can be done without them but I just figured operations over vectors is a common one and there will be many other operations that take two vectors and those take one vector. With this abstraction, getting new operations done can be simplified.
+** 2.47
+Here are two possible constructors for frames:
+#+begin_src scheme
+  (define (make-frame origin edge1 edge2)
+    (list origin edge1 edge2))
+
+  (define (make-frame origin edge1 edge2)
+    (cons origin (cons edge1 edge2)))
+#+end_src
+
+For each constructor supply the appropriate selectors to produce an implementation for frames.
+#+begin_src scheme
+  ;; constructor 1
+  (define (origin-frame f)
+    (list-ref 0))
+  (define (edge1-frame f)
+    (list-ref 1))
+  (define (edge2-frame f)
+    (list-ref 2))
+
+
+  ;; constructor 2
+  (define (origin-frame f)
+    (car f))
+  (define (edge1-frame f)
+    (cadr f))
+  (define (edge2-frame f)
+    (cddr f))
+#+end_src
